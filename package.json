@@ -1,0 +1,9 @@
+{
+  "name": "intent-sentinel",
+  "version": "0.1.0",
+  "description": "Paste one identifier from a stuck cross-chain swap and get a case file that says who must act next.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test test/*.test.js" }
+}
