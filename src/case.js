@@ -1,5 +1,5 @@
 // Opens a case from one pasted identifier: ask the sources, follow what they link to, and build the verdict.
-import { readClaim } from "./adapters/oneclick.js";
+import { readStatus } from "./adapters/oneclick.js";
 import { readOrder } from "./adapters/near.js";
 import { readTransfer } from "./adapters/omni.js";
 import { readTx } from "./adapters/evm.js";
@@ -7,28 +7,36 @@ import { readIdentifier } from "./incident.js";
 import { buildVerdict } from "./verdict.js";
 
 const MAX_HOPS = 8;
-const LIVE = { order: readOrder, transfer: readTransfer, evmTx: readTx, claim: readClaim };
+const LIVE = { order: readOrder, transfer: readTransfer, evmTx: readTx, status: readStatus };
 const EDGE = { CREDITED: "credited-to", PAID_OUT: "paid-to", REFUNDED: "refunded-to", CONTRACT_FORWARDED: "forwarded-to" };
 
-function absorb(c, found) {
+function absorb(c, found, followUp = false) {
   for (const leg of found.legs) {
-    const same = leg.ref && leg.status !== "LOOKUP_FAILED" && c.legs.find((l) => l.ref === leg.ref && l.status === leg.status);
-    if (!same) c.legs.push(leg);
-    else {
-      same.facts = { ...same.facts, ...leg.facts };
-      if (leg.class !== "PROVEN") same.class = leg.class;
+    const same = followUp && leg.ref && leg.status !== "LOOKUP_FAILED" && c.legs.find((l) => l.ref === leg.ref);
+    if (!same) {
+      c.legs.push(leg);
+      continue;
+    }
+    same.facts = { ...same.facts, ...leg.facts };
+    // A follow-up that can't prove the leg takes the proof away, whatever the first source said.
+    if (leg.class !== "PROVEN") {
+      same.class = leg.class;
+      same.status = "NOT_PROVEN";
+      for (const e of c.evidence) if (e.ref === leg.ref) e.class = leg.class;
     }
   }
   const seen = new Set(c.evidence.map((e) => e.id));
   c.evidence.push(...found.evidence.filter((e) => !seen.has(e.id)));
   c.claims.push(...found.claims);
+  c.warnings.push(...(found.warnings ?? []));
   c.identifiers = [...new Set([...c.identifiers, ...found.identifiers])].sort();
 }
 
-async function firstAnswer(id, a, ctx) {
+async function firstAnswer(id, a, ctx, status) {
   if (id.kind === "omni-transfer") return a.transfer(id.value, ctx);
   const order = await a.order(id.value, ctx);
-  if (!order.notFound || id.kind === "deposit-address") return order;
+  if (!order.notFound) return order;
+  if (id.kind === "deposit-address") return status?.nearTx ? a.order(status.nearTx, ctx) : order;
   const omni = await a.transfer(id.value, ctx);
   return omni.notFound ? order : omni;
 }
@@ -39,9 +47,10 @@ export async function openCase(raw, ctx) {
   const id = readIdentifier(raw);
   if (id.error) return { error: id.error };
   const a = { ...LIVE, ...ctx.adapters };
-  const first = await firstAnswer(id, a, ctx);
+  const status = id.kind === "deposit-address" ? await a.status(id.value, ctx) : null;
+  const first = await firstAnswer(id, a, ctx, status);
   if (first.notFound) return { error: first.notFound };
-  const caseData = { identifiers: [], legs: [], edges: [], evidence: [], claims: [] };
+  const caseData = { identifiers: [], legs: [], edges: [], evidence: [], claims: [], warnings: [] };
   absorb(caseData, first);
   const asked = new Set();
   const queue = [...first.next];
@@ -50,13 +59,11 @@ export async function openCase(raw, ctx) {
     if (asked.has(link.value)) continue;
     asked.add(link.value);
     const found = await a.evmTx(link.chain, link.value, ctx);
-    absorb(caseData, found);
+    absorb(caseData, found, true);
     queue.push(...found.next);
   }
-  if (id.kind === "deposit-address") {
-    const claim = await a.claim(id.value, ctx);
-    if (claim) caseData.claims.push(claim);
-  }
+  if (status?.claim) caseData.claims.push(status.claim);
+  if (!caseData.identifiers.length) caseData.identifiers = [id.value];
   caseData.edges = linked(caseData.legs);
   return { caseData, verdict: await buildVerdict(caseData) };
 }

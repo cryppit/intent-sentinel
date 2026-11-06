@@ -5,7 +5,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openCase, replayCase } from "./src/case.js";
-import { buildPacket } from "./src/packet.js";
+import { buildPacket, packetHash, verifyPacket } from "./src/packet.js";
 import { renderText } from "./src/render-text.js";
 import { checkPin, dayRoot, nearCommand, pinArgs, proofFor } from "./src/root.js";
 
@@ -15,10 +15,10 @@ const USAGE = `Usage:
   node cli.js replay <name> [--json]                      replay a recorded case, no network
   node cli.js demo                                        list the recorded cases
   node cli.js root <folder> --day YYYY-MM-DD [--account a.testnet] [--prev YYYY-MM-DD] [--network testnet]
-                                                          Merkle root of a folder of verdicts, and the command to pin it
-  node cli.js prove <folder> <verdict hash>               a proof that a verdict is in that root
-  node cli.js verify <verdict hash> <proof.json> --account a.testnet --day YYYY-MM-DD [--network testnet]
-                                                          check a proof against the pin on NEAR, by a public view call`;
+                                                          Merkle root of a folder of packets, and the command to pin it
+  node cli.js prove <folder> <packet name>                a proof that a packet is in that root
+  node cli.js verify <packet.json> <proof.json> --account a.testnet --day YYYY-MM-DD [--network testnet]
+                                                          check a packet against the pin on NEAR, by a public view call`;
 
 function fail(message) {
   console.error(message);
@@ -31,15 +31,27 @@ function finish({ caseData, verdict }, json) {
   process.exit(verdict.nextAction.party === "none" ? 0 : 2);
 }
 
-/** Verdict hashes from a folder of packets or verdicts, including recorded cases' expected.json. */
-function verdictHashes(folder) {
-  const files = readdirSync(folder).flatMap((name) => {
+/** Packets from a folder: downloaded packet files, and recorded cases rebuilt from their case.json. */
+async function packetsIn(folder) {
+  const packets = new Map();
+  if (!existsSync(folder)) fail(`No folder called ${folder}.`);
+  for (const name of readdirSync(folder).sort()) {
     const path = join(folder, name);
-    if (statSync(path).isDirectory()) return existsSync(join(path, "expected.json")) ? [join(path, "expected.json")] : [];
-    return name.endsWith(".json") ? [path] : [];
-  });
-  return files.map((f) => JSON.parse(readFileSync(f, "utf8"))).map((j) => j.outputHash ?? j.verdict?.outputHash).filter(Boolean);
+    if (statSync(path).isDirectory()) {
+      if (!existsSync(join(path, "case.json"))) continue;
+      const { caseData, verdict } = await replayCase(path);
+      packets.set(name, buildPacket(caseData, verdict));
+    } else if (name.endsWith(".json")) {
+      const packet = JSON.parse(readFileSync(path, "utf8"));
+      if (!packet.verdict) continue;
+      if (!(await verifyPacket(packet))) fail(`${name}: its verdict doesn't match its hash, so it was changed.`);
+      packets.set(name.replace(/\.json$/, ""), packet);
+    }
+  }
+  return packets;
 }
+
+const hashesOf = async (packets) => Promise.all([...packets.values()].map(packetHash));
 
 const argv = process.argv.slice(2);
 const flag = (name) => {
@@ -67,14 +79,19 @@ if (command === "demo") {
   finish(r, json);
 } else if (command === "root" && target) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day ?? "")) fail("root needs --day YYYY-MM-DD: a closed UTC day.");
-  const hashes = verdictHashes(target);
+  const hashes = await hashesOf(await packetsIn(target));
   const { root, leafCount } = await dayRoot(hashes);
   console.log(`day ${day}\nleaves ${leafCount}\nroot ${root}`);
   if (account) console.log(`\nPin it yourself. This tool never signs:\n${nearCommand(account, pinArgs(day, hashes, root, leafCount, prev), network)}`);
 } else if (command === "prove" && target && extra) {
-  console.log(JSON.stringify(await proofFor(verdictHashes(target), extra), null, 2));
+  const packets = await packetsIn(target);
+  const packet = packets.get(extra);
+  if (!packet) fail(`No packet called ${extra} in ${target}.`);
+  console.log(JSON.stringify(await proofFor(await hashesOf(packets), await packetHash(packet)), null, 2));
 } else if (command === "verify" && target && extra && account && day) {
-  const r = await checkPin(target, JSON.parse(readFileSync(extra, "utf8")), account, day, network);
+  const packet = JSON.parse(readFileSync(target, "utf8"));
+  if (!(await verifyPacket(packet))) fail("This packet's verdict doesn't match its hash, so it was changed.");
+  const r = await checkPin(await packetHash(packet), JSON.parse(readFileSync(extra, "utf8")), account, day, network).catch((e) => ({ ok: false, reason: `Could not read the pin: ${e.message}` }));
   console.log(r.reason);
   process.exit(r.ok ? 0 : 3);
 } else {

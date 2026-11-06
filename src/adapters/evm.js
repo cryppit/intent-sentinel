@@ -37,10 +37,10 @@ export async function readTx(chain, hash, ctx) {
     return {
       legs: [{
         id: `evm:${hash}`, provider: chain, ref: hash, status: "PAID_OUT", class: ok ? "PROVEN" : "UNKNOWN", evidence: [`evm:${hash}`],
-        facts: { recipient, recipientIsContract: code !== "0x" && code !== null, transfers, block: Number(receipt.blockNumber) },
+        facts: { recipient, recipientIsContract: code !== "0x" && code !== null, transfers, block: Number(receipt.blockNumber), ...(ok ? {} : { reverted: true }) },
       }],
       edges: [],
-      evidence: [{ id: `evm:${hash}`, source: chain, kind: "receipt", ref: hash, observedAt: ctx.now, class: ok ? "PROVEN" : "UNKNOWN" }],
+      evidence: [{ id: `evm:${hash}`, source: chain, kind: "read", ref: hash, observedAt: ctx.now, class: ok ? "PROVEN" : "UNKNOWN" }],
       claims: [],
       identifiers: [hash],
       next: [],

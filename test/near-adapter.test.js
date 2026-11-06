@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { traceToLegs, readOrder } from "../src/adapters/near.js";
-import { paidReport, matchedReport, refundedReport, privateReport, stuckReport, notFoundReport, swappedReport } from "./stubs/reports.js";
+import { paidReport, matchedReport, refundedReport, privateReport, stuckReport, notFoundReport, swappedReport, twoPaidReport, secondUnprovenReport, partialRefundReport, unseenReport, flagged, unverifiedLedger } from "./stubs/reports.js";
 
 const NOW = "2026-11-06T00:00:00Z";
 const legs = (r) => traceToLegs(r, NOW).legs;
@@ -18,18 +18,24 @@ test("a stuck order is held past its window", () => {
   assert.equal(last.status, "HELD");
   assert.ok(Date.parse(last.window.dueBy) < Date.parse(NOW));
 });
-test("no deposit found is DEPOSIT_NOT_FOUND", () => assert.equal(legs(notFoundReport)[0].status, "DEPOSIT_NOT_FOUND"));
 test("the NEAR ledger is balanced when no swap ran", () => {
   const credit = legs(paidReport)[1];
   assert.equal(credit.amountIn, "100");
   assert.deepEqual(credit.amountOut, ["100"]);
 });
-test("a swap changes the token, so no balance is claimed", () => assert.equal(legs(swappedReport)[1].amountIn, undefined));
+test("a swap changes the token, so the balance says it wasn't checked", () => {
+  assert.equal(legs(swappedReport)[1].amountIn, undefined);
+  assert.match(legs(swappedReport)[1].unchecked, /swap/);
+});
 test("each hop becomes evidence with its chain time", () => {
   const e = traceToLegs(swappedReport, NOW).evidence.find((x) => x.ref === "NEARSWAP");
   assert.equal(e.class, "PROVEN");
   assert.equal(e.observedAt, "2026-09-21T14:14:10.000Z");
 });
+test("the payout's time comes from the chain, not the read", () =>
+  assert.equal(traceToLegs(paidReport, NOW).evidence.find((x) => x.ref === "0xpayout").observedAt, "2026-09-21T14:15:05.000Z"));
+test("the deposit never looks newer than its credit", () =>
+  assert.equal(traceToLegs(paidReport, NOW).evidence.find((x) => x.ref === "0xorigin").observedAt, "2026-09-21T14:13:20.000Z"));
 test("the read itself is evidence, so a verdict knows when it looked", () =>
   assert.ok(traceToLegs(paidReport, NOW).evidence.some((x) => x.kind === "read" && x.observedAt === NOW)));
 test("identifiers don't depend on how the order was found", () => {
@@ -47,4 +53,35 @@ test("a dead source gives a failed leg, not a throw", async () => {
 test("an unknown hash is a plain answer, not a failed source", async () => {
   const r = await readOrder("x", { now: NOW, check: async () => { throw new Error("no such transaction"); } });
   assert.match(r.notFound, /no such transaction/);
+});
+
+test("no order behind an id is a plain answer, never a proven absence", async () => {
+  const r = await readOrder("x", { now: NOW, check: async () => notFoundReport });
+  assert.match(r.notFound, /No NEAR Intents order/);
+});
+test("every withdrawal gets its own leg", () =>
+  assert.deepEqual(legs(twoPaidReport).slice(2).map((l) => [l.status, l.ref]), [["PAID_OUT", "0xpayout"], ["PAID_OUT", "0xpayout2"]]));
+test("a withdrawal with no payout found isn't hidden", () =>
+  assert.equal(legs(secondUnprovenReport).find((l) => l.status === "PAYOUT_UNSEEN").class, "UNKNOWN"));
+test("a partial refund next to a swap shows both ends", () =>
+  assert.deepEqual(legs(partialRefundReport).slice(2).map((l) => l.status).sort(), ["PAID_OUT", "REFUNDED"]));
+test("a searched-for payout that wasn't found doesn't say paid out", () =>
+  assert.equal(legs(unseenReport).at(-1).status, "PAYOUT_UNSEEN"));
+test("both EVM payouts are followed", () =>
+  assert.equal(traceToLegs(twoPaidReport, NOW).next.length, 2));
+test("a non-EVM 0x payout isn't sent to the EVM reader", () =>
+  assert.deepEqual(traceToLegs({ ...paidReport, payout: { ...paidReport.payout, chain: "aptos" } }, NOW).next, []));
+for (const kind of ["incomplete_history", "ledger_mismatch", "destination_missing", "several_orders", "payout_bounced", "withdrawal_refused", "withdrawal_returned", "locked", "executing"])
+  test(`the tracer's ${kind} warning is kept`, () => assert.equal(traceToLegs(flagged(kind), NOW).warnings[0].kind, kind));
+test("a harmless note isn't a warning", () => assert.deepEqual(traceToLegs(flagged("settled_late"), NOW).warnings, []));
+test("a ledger that couldn't be checked is a failed read", () =>
+  assert.ok(legs(unverifiedLedger).some((l) => l.status === "LOOKUP_FAILED")));
+for (const [name, err] of [["a timeout", Object.assign(new Error("t"), { name: "TimeoutError" })], ["a bad body", new SyntaxError("bad json")], ["an HTTP error", new Error("FastNEAR answered HTTP 404")]])
+  test(`${name} is a failed source, not bad input`, async () => {
+    const r = await readOrder("x", { now: NOW, check: async () => { throw err; } });
+    assert.equal(r.legs?.[0].status, "LOOKUP_FAILED");
+  });
+test("a source that hangs fails instead of waiting for ever", async () => {
+  const r = await readOrder("x", { now: NOW, timeoutMs: 20, check: () => new Promise(() => {}) });
+  assert.equal(r.legs[0].status, "LOOKUP_FAILED");
 });

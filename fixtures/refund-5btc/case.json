@@ -35,12 +35,12 @@
     },
     {
       "evidence": [],
+      "id": "end:Fp5nbFaUiqqHjGQUD168zbQsM4EVE82Woe4pMXhyQ4Tq",
       "provider": "btc",
       "ref": "3785476b34acf5f614e08e58526ab40754ce5e3751ddf8505a70f59d38154d19",
       "amount": "500011974",
       "class": "PROVEN",
       "at": "2026-09-30T16:20:48.924Z",
-      "id": "refund",
       "status": "REFUNDED",
       "custody": "refund address"
     }
@@ -53,7 +53,7 @@
     },
     {
       "from": "credit",
-      "to": "refund",
+      "to": "end:Fp5nbFaUiqqHjGQUD168zbQsM4EVE82Woe4pMXhyQ4Tq",
       "kind": "refunded-to"
     }
   ],
@@ -87,7 +87,7 @@
       "source": "btc",
       "kind": "tx",
       "ref": "94ec9c26e896ebd9b03e74054452ea0db3c19fafe0c57bc68c3e0e9c3385fd66",
-      "observedAt": "2026-11-06T04:56:48.508Z",
+      "observedAt": "2026-08-10T22:46:03.568Z",
       "class": "PROVEN"
     },
     {
@@ -95,7 +95,7 @@
       "source": "btc",
       "kind": "tx",
       "ref": "3785476b34acf5f614e08e58526ab40754ce5e3751ddf8505a70f59d38154d19",
-      "observedAt": "2026-11-06T04:56:48.508Z",
+      "observedAt": "2026-09-30T16:35:22.924Z",
       "class": "PROVEN"
     },
     {
@@ -103,9 +103,10 @@
       "source": "near",
       "kind": "read",
       "ref": "c9be0b52120350f643381fd03df104fff70d41d6ae2b27d8fc81dce7f07b1df9",
-      "observedAt": "2026-11-06T04:56:48.508Z",
+      "observedAt": "2026-11-06T05:34:59.969Z",
       "class": "PROVEN"
     }
   ],
-  "claims": []
+  "claims": [],
+  "warnings": []
 }

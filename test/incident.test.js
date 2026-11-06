@@ -29,3 +29,7 @@ test("an empty paste gives an error", () => assert.ok(readIdentifier("   ").erro
 test("same ids in any order give one incident", async () =>
   assert.equal(await incidentId(["b", "a"]), await incidentId(["a", "b", "a"])));
 test("incident ids carry the prefix", async () => assert.match(await incidentId(["a"]), /^iv1_[0-9a-f]{64}$/));
+
+test("a bc1 stub isn't an address", () => assert.ok(readIdentifier("bc1hello").error));
+test("a real bc1 address is", () => assert.equal(readIdentifier("bc1qh24lnnls8fpp90vttch8zwdkeetvvkdfnt3rry").kind, "deposit-address"));
+test("an unknown chain isn't an Omni id", () => assert.ok(readIdentifier("foo:123").error));

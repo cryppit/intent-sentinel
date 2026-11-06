@@ -6,6 +6,8 @@ import { failedRead, getJson, postJson } from "../net.js";
 
 const TRANSFERS = "https://mainnet.api.bridge.nearone.org/api/v4/transfers/transfer";
 const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+const MEMPOOL = "https://mempool.space/api";
+const FASTNEAR_TX = "https://tx.main.fastnear.com/v0/transactions";
 const SOLANA_BRIDGE = "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe";
 const isSolanaSig = (id) => /^[1-9A-HJ-NP-Za-km-z]{86,88}$/.test(id);
 const title = (s) => s[0].toUpperCase() + s.slice(1);
@@ -20,33 +22,57 @@ export function finishStep({ status, origin, dest }) {
   return { step: "fin_transfer", by: "omni-relayer" };
 }
 
+/** The tracer's chain key for each destination whose bridge contract records a finished transfer. */
+const CONTRACT_CHAIN = { Eth: "eth", Base: "base", Arb: "arb", Bnb: "bsc", Pol: "pol", Avax: "avax", HlEvm: "hlevm", Abs: "abs", Strk: "starknet" };
+
+/** true or false from the destination contract; null if it can't be read; undefined if there's no contract to ask. */
 async function paidOnContract(t, ctx) {
-  if (t.destination_nonce == null || t.destination_chain === "Near") return false;
+  const chain = CONTRACT_CHAIN[t.destination_chain];
+  if (!chain || t.destination_nonce == null) return undefined;
   const ask = ctx.omniPaid ?? publicPayoutClient(ctx.fetch ?? fetch).omniPaid;
-  return (await ask(t.destination_chain.toLowerCase(), t.destination_nonce).catch(() => null)) === true;
+  return ask(chain, t.destination_nonce).catch(() => null);
+}
+
+const destinationTx = (t) => t.utxo_winning_tx_hash ?? t.finalised?.transaction_hash ?? null;
+
+/** Where no contract keeps a flag, the finishing transaction itself is the proof. True only when the chain confirms it. */
+async function confirmedOnChain(t, ctx) {
+  const tx = destinationTx(t);
+  if (!tx) return false;
+  try {
+    if (t.destination_chain === "Sol") {
+      const r = await postJson(SOLANA_RPC, { jsonrpc: "2.0", id: 1, method: "getTransaction", params: [tx, { encoding: "json", maxSupportedTransactionVersion: 0 }] }, ctx);
+      return Boolean(r.result) && r.result.meta?.err === null;
+    }
+    if (t.destination_chain === "Btc") return (await getJson(`${MEMPOOL}/tx/${tx}/status`, ctx)).confirmed === true;
+    if (t.destination_chain === "Near") return Boolean((await postJson(FASTNEAR_TX, { tx_hashes: [tx] }, ctx)).transactions?.length);
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 async function transferToCase(t, ctx) {
   const id = t.transfer_id;
   const ref = `${id.chain}:${id.nonce ?? id.id ?? "?"}`;
-  const paid = !isFinal(t.status) && (await paidOnContract(t, ctx));
-  const status = paid || isFinal(t.status) ? "FINALISED" : /signed/i.test(t.status) ? "SIGNED" : "INITIALISED";
+  const paid = await paidOnContract(t, ctx);
+  const contractRead = paid === true || paid === false;
+  const status = paid === true || isFinal(t.status) ? "FINALISED" : /signed/i.test(t.status) ? "SIGNED" : "INITIALISED";
+  const confirmed = status === "FINALISED" && !contractRead && (await confirmedOnChain(t, ctx));
+  const agrees = confirmed || (contractRead && (status === "FINALISED") === paid);
   const finish = status === "FINALISED" ? null : finishStep({ status: t.status, origin: t.origin_chain, dest: t.destination_chain });
   const tx = t.initialised?.transaction_hash;
   const evidence = tx ? [{ id: `omni:${tx}`, source: t.initialised.chain.toLowerCase(), kind: "tx", ref: tx, observedAt: iso(t.initialised.timestamp_seconds), class: "PROVEN" }] : [];
-  evidence.push({ id: `read:omni:${ref}`, source: "omni", kind: "read", ref, observedAt: ctx.now, class: "PROVEN" });
-  return {
-    legs: [{
-      id: `omni:${ref}`, provider: "omni", ref, status, class: "PROVEN", custody: status === "FINALISED" ? "recipient" : "omni bridge", evidence: tx ? [`omni:${tx}`] : [],
-      ...(finish ? { finish } : {}),
-      facts: { token: t.token_id, amount: t.amount, fee: t.fee, nativeFee: t.native_fee, from: t.origin_chain, to: t.destination_chain },
-    }],
-    edges: [],
-    evidence,
-    claims: [],
-    identifiers: [ref.toLowerCase(), tx].filter(Boolean),
-    next: [],
-  };
+  const dest = destinationTx(t);
+  if (confirmed) evidence.push({ id: `omni:${dest}`, source: t.destination_chain.toLowerCase(), kind: "tx", ref: dest, observedAt: t.finalised?.timestamp_seconds ? iso(t.finalised.timestamp_seconds) : ctx.now, class: "PROVEN" });
+  evidence.push({ id: `read:omni:${ref}`, source: "omni", kind: "read", ref, observedAt: ctx.now, class: agrees ? "PROVEN" : "REPORTED" });
+  const legs = [{
+    id: `omni:${ref}`, provider: "omni", ref, status, class: agrees ? "PROVEN" : "REPORTED", custody: status === "FINALISED" ? "recipient" : "omni bridge", evidence: tx ? [`omni:${tx}`] : [],
+    ...(finish ? { finish } : {}),
+    facts: { token: t.token_id, amount: t.amount, fee: t.fee, nativeFee: t.native_fee, from: t.origin_chain, to: t.destination_chain },
+  }];
+  if (paid === null) legs.push({ id: `contract:${ref}`, provider: `${t.destination_chain} bridge contract`, status: "LOOKUP_FAILED", class: "UNKNOWN", evidence: [] });
+  return { legs, edges: [], evidence, claims: [], identifiers: [ref.toLowerCase(), tx].filter(Boolean), next: [] };
 }
 
 async function solanaCase(sig, ctx) {
@@ -63,7 +89,7 @@ async function solanaCase(sig, ctx) {
     edges: [],
     evidence: [
       { id: `sol:${sig}`, source: "sol", kind: "tx", ref: sig, observedAt: iso(tx.blockTime), class: "PROVEN" },
-      { id: `read:omni:${sig}`, source: "omni", kind: "read", ref: sig, observedAt: ctx.now, class: "PROVEN" },
+      { id: `read:omni:${sig}`, source: "omni", kind: "read", ref: sig, observedAt: ctx.now, class: "REPORTED" },
     ],
     claims: [],
     identifiers: [sig],

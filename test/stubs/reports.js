@@ -18,3 +18,18 @@ export const privateReport = { ...base, verdict: "confidential", withdrawals: []
 export const stuckReport = { ...base, verdict: "stuck", withdrawals: [], balances: { "nep141:usdc": "100" }, payout: { status: "missing" } };
 export const notFoundReport = { ...base, verdict: "not_found", origin: { status: "missing" }, deposits: [], withdrawals: [], payout: { status: "missing" } };
 export const swappedReport = { ...paidReport, swaps: [{ status: "proven", tx: "NEARSWAP", timestampNs: 1790000050000000000n, height: 15 }] };
+
+const second = { status: "proven", tx: "NEARWITHDRAW2", timestampNs: 1790000200000000000n, height: 21, kind: "ft_withdraw", token: "nep141:usdc", amount: "40", chain: "eth", bridge: "poa", destination: "0xdest2" };
+export const twoPaidReport = {
+  ...paidReport, deposits: [{ ...base.deposits[0], amount: "140" }], withdrawals: [base.withdrawals[0], second],
+  payout: { ...arrived("proven"), tx: "0xpayout2" }, otherPayouts: { NEARWITHDRAW: arrived("proven") },
+};
+export const secondUnprovenReport = { ...twoPaidReport, otherPayouts: {} };
+export const partialRefundReport = {
+  ...swappedReport,
+  withdrawals: [{ ...base.withdrawals[0], tx: "NEAREXCESS", excessRefund: true, chain: "eth" }, { ...second, tx: "NEARPAY" }],
+  payout: { ...arrived("proven"), tx: "0xpay" }, otherPayouts: { NEAREXCESS: { ...arrived("proven"), tx: "0xrefund" } },
+};
+export const unseenReport = { ...base, verdict: "settled", payout: { status: "not_found", chain: "eth", waitedSec: 100 } };
+export const flagged = (kind) => ({ ...paidReport, flags: [{ kind, detail: `the tracer says ${kind}` }] });
+export const unverifiedLedger = { ...paidReport, balanceCheck: { status: "not_verified", reason: "rpc down" } };

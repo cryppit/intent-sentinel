@@ -1,29 +1,51 @@
 // A NEAR Intents order, read through the Where's My Swap tracer (declared baseline) and turned into legs.
 // Conservation is claimed only on the NEAR ledger, and only with no swap: bridges take fees they don't report, and a swap
-// changes the token, so anything else would be a guess.
-import { checkOrderWithFallback, fastnearClient, fastnearUnavailable, publicOriginClient, publicPayoutClient } from "../../vendor/wms-core.mjs";
+// changes the token. Where it can't be checked, the case says so rather than staying silent.
+import { checkOrderWithFallback, EVM_RPC, fastnearClient, fastnearUnavailable, payingWithdrawal, publicOriginClient, publicPayoutClient, searchPayout } from "../../vendor/wms-core.mjs";
 import { failedRead } from "../net.js";
 
 const iso = (ns) => (ns == null ? null : new Date(Number(BigInt(ns) / 1_000_000n)).toISOString());
-const short = (chain) => String(chain ?? "unknown").split(":")[0];
+const short = (chain) => String(chain ?? "near").split(":")[0];
 const PROVEN_PAYOUT = ["proven", "confirmed", "recorded"];
+const SOURCE_TIMEOUT_MS = 12_000;
+const CASE_TIMEOUT_MS = 45_000;
+// Tracer flags that mean the order isn't simply finished, and who can answer each.
+const WARNINGS = {
+  destination_missing: "user", locked: "near-intents", withdrawal_refused: "near-intents", withdrawal_returned: "near-intents", payout_bounced: "near-intents",
+  ledger_mismatch: "unknown", incomplete_history: "unknown", several_orders: "unknown", executing: "unknown",
+};
 
-function evidenceOf(report, now) {
+const classOf = (payout) => (PROVEN_PAYOUT.includes(payout.how) ? "PROVEN" : "INFERRED");
+const later = (ns, sec) => new Date(Number(BigInt(ns) / 1_000_000n) + (sec ?? 0) * 1000).toISOString();
+
+/** Each withdrawal with its payout. The tracer searches only the paying one; `otherPayouts` holds the rest. */
+function endsOf(report) {
+  const paying = payingWithdrawal(report);
+  const live = report.withdrawals.filter((w) => w === paying || !(w.returned || w.refused || w.bounced));
+  if (!live.length) return report.verdict === "settled" || report.verdict === "refunded" ? [{ w: null, payout: report.payout }] : [];
+  return live.map((w) => ({ w, payout: w === paying ? report.payout : report.otherPayouts?.[w.tx] ?? { status: "missing" } }));
+}
+
+function evidenceOf(report, ends, now) {
   const near = [...report.deposits, ...report.swaps, ...report.transfers, ...report.withdrawals];
   const items = near.filter((h) => h.tx).map((h) => ({ id: `near:${h.tx}`, source: "near", kind: "tx", ref: h.tx, observedAt: iso(h.timestampNs) ?? now, class: "PROVEN" }));
-  if (report.origin.txHash) items.push({ id: `origin:${report.origin.txHash}`, source: short(report.origin.chain), kind: "tx", ref: report.origin.txHash, observedAt: now, class: "PROVEN" });
-  if (report.payout.tx) {
-    const cls = PROVEN_PAYOUT.includes(report.payout.how) ? "PROVEN" : "INFERRED";
-    items.push({ id: `payout:${report.payout.tx}`, source: short(report.payout.chain), kind: "tx", ref: report.payout.tx, observedAt: now, class: cls });
+  // The tracer doesn't give the origin chain's time, so the deposit is dated by its credit: it can't be later than that.
+  const firstCredit = report.deposits[0]?.timestampNs;
+  if (report.origin.txHash) items.push({ id: `origin:${report.origin.txHash}`, source: short(report.origin.chain), kind: "tx", ref: report.origin.txHash, observedAt: iso(firstCredit) ?? now, class: "PROVEN" });
+  for (const { w, payout } of ends) {
+    if (!payout.tx) continue;
+    const at = w?.timestampNs != null ? later(w.timestampNs, payout.delaySec) : now;
+    items.push({ id: `payout:${payout.tx}`, source: short(payout.chain), kind: "tx", ref: payout.tx, observedAt: at, class: classOf(payout) });
   }
   items.push({ id: `read:near:${report.account}`, source: "near", kind: "read", ref: report.account, observedAt: now, class: "PROVEN" });
   return items;
 }
 
 function ledgerBalance(report) {
-  if (report.swaps.length || report.transfers.length) return {};
+  if (report.swaps.length || report.transfers.length) return { unchecked: "a swap or transfer changes what the amounts mean" };
   const tokens = new Set([...report.deposits, ...report.withdrawals].map((h) => h.token));
-  if (tokens.size !== 1 || !report.withdrawals.length) return {};
+  if (!report.withdrawals.length) return {};
+  if (tokens.size !== 1) return { unchecked: "more than one token" };
   const token = [...tokens][0];
   const held = report.balances[token];
   return {
@@ -32,54 +54,77 @@ function ledgerBalance(report) {
   };
 }
 
-function endLeg(report, lastAt) {
-  const p = report.payout;
-  const paid = { provider: short(p.chain), ref: p.tx ?? undefined, amount: p.amount ?? undefined, class: PROVEN_PAYOUT.includes(p.how) ? "PROVEN" : "INFERRED", at: lastAt };
-  switch (report.verdict) {
-    case "settled": return { ...paid, id: "payout", status: "PAID_OUT", custody: "recipient" };
-    case "refunded": return { ...paid, id: "refund", status: "REFUNDED", custody: "refund address" };
-    case "confidential": return { id: "private", provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", custody: "not visible" };
-    case "stuck": return { id: "held", provider: "near-intents", status: "HELD", class: "PROVEN", custody: "intents.near", window: { dueBy: lastAt } };
-    case "in_progress": return { id: "held", provider: "near-intents", status: "HELD", class: "PROVEN", custody: "intents.near" };
-    default: return null;
-  }
+function endLeg({ w, payout }, report, at) {
+  const isRefund = w?.excessRefund || report.verdict === "refunded";
+  const id = `end:${w?.tx ?? "order"}`;
+  if (payout.status !== "arrived") return { id, provider: short(payout.chain ?? w?.chain), ref: w?.tx, status: "PAYOUT_UNSEEN", class: "UNKNOWN", custody: "unknown", at };
+  return { id, provider: short(payout.chain), ref: payout.tx ?? w?.tx, amount: payout.amount ?? undefined, class: classOf(payout), at, status: isRefund ? "REFUNDED" : "PAID_OUT", custody: isRefund ? "refund address" : "recipient" };
+}
+
+function openLeg(report, lastAt) {
+  if (report.verdict === "confidential") return { id: "private", provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", custody: "not visible" };
+  if (report.verdict === "stuck") return { id: "held", provider: "near-intents", status: "HELD", class: "PROVEN", custody: "intents.near", window: { dueBy: lastAt } };
+  if (report.verdict === "in_progress") return { id: "held", provider: "near-intents", status: "HELD", class: "PROVEN", custody: "intents.near" };
+  return null;
 }
 
 export function traceToLegs(report, now) {
   const legs = [];
   const o = report.origin;
-  if (report.verdict === "not_found") legs.push({ id: "origin", provider: "near-intents", ref: report.account, status: "DEPOSIT_NOT_FOUND", class: "PROVEN" });
-  else if (o.status === "proven") legs.push({ id: "origin", provider: short(o.chain), ref: o.txHash ?? o.originNonce, status: "DEPOSIT_CONFIRMED", class: "PROVEN", custody: "bridge" });
+  if (o.status === "proven") legs.push({ id: "origin", provider: short(o.chain), ref: o.txHash ?? o.originNonce, status: "DEPOSIT_CONFIRMED", class: "PROVEN", custody: "bridge" });
   else if (o.status === "unverified") legs.push({ id: "origin", provider: "unknown", status: "DEPOSIT_CONFIRMED", class: "INFERRED", custody: "bridge" });
   const times = [...report.deposits, ...report.withdrawals].map((h) => iso(h.timestampNs)).filter(Boolean).sort();
   const lastAt = times.at(-1) ?? now;
   if (report.deposits.length) {
     legs.push({ id: "credit", provider: "near-intents", ref: report.deposits[0].tx, status: "CREDITED", class: "PROVEN", custody: "intents.near", evidence: report.deposits.map((d) => `near:${d.tx}`), ...ledgerBalance(report) });
   }
-  const end = endLeg(report, lastAt);
-  if (end) legs.push(end);
-  const followed = report.payout.status === "arrived" && PROVEN_PAYOUT.includes(report.payout.how) && report.payout.tx?.startsWith("0x");
-  const ids = [report.account, o.txHash, o.originNonce, ...[...report.deposits, ...report.swaps, ...report.transfers, ...report.withdrawals].map((h) => h.tx), report.payout.tx];
+  const ends = report.verdict === "confidential" ? [] : endsOf(report);
+  legs.push(...ends.map((e) => endLeg(e, report, lastAt)));
+  const open = openLeg(report, lastAt);
+  if (open) legs.push(open);
+  if (report.balanceCheck?.status === "not_verified") legs.push({ id: "balance-check", provider: "intents.near", status: "LOOKUP_FAILED", class: "UNKNOWN", reason: report.balanceCheck.reason });
+  const follow = ends.filter(({ payout }) => payout.status === "arrived" && PROVEN_PAYOUT.includes(payout.how) && payout.tx?.startsWith("0x") && EVM_RPC[payout.chain]);
+  const hops = [...report.deposits, ...report.swaps, ...report.transfers, ...report.withdrawals].map((h) => h.tx);
+  const ids = [report.account, o.txHash, o.originNonce, ...hops, ...ends.map((e) => e.payout.tx)];
   return {
     legs: legs.map((l) => ({ evidence: [], ...l })),
     edges: [],
-    evidence: evidenceOf(report, now),
+    evidence: evidenceOf(report, ends, now),
     claims: [],
     identifiers: [...new Set(ids.filter(Boolean))],
-    next: followed ? [{ kind: "evm-tx", chain: report.payout.chain, value: report.payout.tx }] : [],
+    warnings: report.flags.filter((f) => f.kind in WARNINGS).map(({ kind, detail }) => ({ kind, party: WARNINGS[kind], detail })),
+    next: follow.map(({ payout }) => ({ kind: "evm-tx", chain: payout.chain, value: payout.tx })),
   };
 }
 
-const liveCheck = (raw, ctx) => {
-  const f = ctx.fetch ?? fetch;
-  return checkOrderWithFallback(raw, fastnearClient(f), BigInt(Date.parse(ctx.now)) * 1_000_000n, undefined, publicPayoutClient(f), publicOriginClient(f));
-};
+const timed = (f) => (url, init = {}) => f(url, { ...init, signal: init.signal ?? AbortSignal.timeout(SOURCE_TIMEOUT_MS) });
+
+async function liveCheck(raw, ctx) {
+  const f = timed(ctx.fetch ?? fetch);
+  const nowNs = BigInt(Date.parse(ctx.now)) * 1_000_000n;
+  const payouts = publicPayoutClient(f);
+  const report = await checkOrderWithFallback(raw, fastnearClient(f), nowNs, undefined, payouts, publicOriginClient(f));
+  const paying = payingWithdrawal(report);
+  const others = report.withdrawals.filter((w) => w !== paying && !(w.returned || w.refused || w.bounced));
+  const found = await Promise.all(others.map((w) => searchPayout(w, payouts, nowNs).catch(() => ({ status: "unverified" }))));
+  return { ...report, otherPayouts: Object.fromEntries(others.map((w, i) => [w.tx, found[i]])) };
+}
+
+/** A broken source, not an answer about the order: these must never read as "no such order". */
+const sourceFailed = (e) => fastnearUnavailable(e) || ["TimeoutError", "AbortError", "SyntaxError", "TypeError"].includes(e.name) || /\bHTTP \d{3}\b|answered \d{3}/.test(e.message);
 
 export async function readOrder(raw, ctx) {
+  let timer;
+  const limit = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error("the source took too long"), { name: "TimeoutError" })), ctx.timeoutMs ?? CASE_TIMEOUT_MS);
+  });
   try {
-    return traceToLegs(await (ctx.check ?? liveCheck)(raw, ctx), ctx.now);
+    const report = await Promise.race([(ctx.check ?? liveCheck)(raw, ctx), limit]);
+    if (report.verdict === "not_found") return { notFound: "No NEAR Intents order was found for that id." };
+    return traceToLegs(report, ctx.now);
   } catch (e) {
-    if (fastnearUnavailable(e)) return failedRead("near", raw, e.message, ctx.now);
-    return { notFound: e.message };
+    return sourceFailed(e) ? failedRead("near", raw, e.message, ctx.now) : { notFound: e.message };
+  } finally {
+    clearTimeout(timer);
   }
 }

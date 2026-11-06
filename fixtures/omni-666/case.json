@@ -55,9 +55,10 @@
       "source": "omni",
       "kind": "read",
       "ref": "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
-      "observedAt": "2026-11-06T04:56:46.371Z",
-      "class": "PROVEN"
+      "observedAt": "2026-11-06T05:36:02.546Z",
+      "class": "REPORTED"
     }
   ],
-  "claims": []
+  "claims": [],
+  "warnings": []
 }

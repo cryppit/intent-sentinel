@@ -1,7 +1,7 @@
 {
   "schema": "intent-delivery-verdict/1",
   "incident": "iv1_902fc348bc2fc6fb53ff73f6ba6c933461ae135789522981eeba2ccba178d91e",
-  "computedAt": "2026-11-06T04:56:48.508Z",
+  "computedAt": "2026-09-30T16:35:22.924Z",
   "rulesVersion": "1.0.0",
   "journey": "REFUNDED",
   "nextAction": {
@@ -46,5 +46,5 @@
     }
   ],
   "claims": [],
-  "outputHash": "149815b927b112a0e89dfd5b1cffa4923b902b9474ba383c9a742218c0b64785"
+  "outputHash": "d8e58733288d8acd6a496d9784c85f8d079f7398b6a3f346123b3ab35397ad36"
 }

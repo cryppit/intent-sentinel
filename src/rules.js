@@ -1,5 +1,6 @@
 // Rules v1 (spec section 6). They run in this order; each may set the journey and the next party. Pure: no clock, no
-// network. `at` is the verdict's time. A soft rule only fills in a next party when nothing is left open.
+// network. `at` is when the case was read. A soft rule only fills in a next party when nothing is left open; a settling
+// rule never replaces an open one, because a proven payout on one leg says nothing about the others.
 import { PARTIES } from "./schema.js";
 import { PARTY_WORDS, shortRef } from "./words.js";
 
@@ -32,8 +33,15 @@ const RULES = [
     question: () => "This balance is still held after the quote expired. When will it be refunded?",
     ask: () => ["the order's quote and refund address"],
   },
-  { code: "PAID_OUT", fires: (c) => leg(c, (l) => isProven(l) && l.status === "PAID_OUT"), party: () => "none", question: () => null, ask: () => [] },
-  { code: "REFUNDED", fires: (c) => leg(c, (l) => isProven(l) && l.status === "REFUNDED"), party: () => "none", question: () => null, ask: () => [] },
+  { code: "PAID_OUT", settles: true, fires: (c) => leg(c, (l) => isProven(l) && (l.status === "PAID_OUT" || l.status === "FINALISED")), party: () => "none", question: () => null, ask: () => [] },
+  { code: "REFUNDED", settles: true, fires: (c) => leg(c, (l) => isProven(l) && l.status === "REFUNDED"), party: () => "none", question: () => null, ask: () => [] },
+  {
+    code: "FINISH_REPORTED",
+    fires: (c) => leg(c, (l) => l.status === "FINALISED" && !isProven(l)),
+    party: () => "unknown",
+    question: (c, l) => `The bridge's indexer says ${refOf(l)} finished, but no chain read confirms it here. Did it arrive?`,
+    ask: () => ["the destination transaction"],
+  },
   {
     code: "RECIPIENT_IS_CONTRACT",
     soft: true,
@@ -79,7 +87,7 @@ const RULES = [
   },
   {
     code: "CONSERVATION_MISMATCH",
-    fires: (c, at, r) => r.conservation.find((x) => !x.ok) ?? null,
+    fires: (c, at, r) => r.conservation.find((x) => x.ok === false) ?? null,
     party: () => "unknown",
     question: (c, x) => `Amounts on ${x.leg} don't add up. What accounts for the difference?`,
     ask: () => ["fees or other outputs of this leg"],
@@ -107,6 +115,13 @@ const RULES = [
     ask: () => ["whether this order used that rail"],
   },
   {
+    code: "TRACE_WARNING",
+    fires: (c) => c.warnings?.[0] ?? null,
+    party: (c, w) => named(w.party),
+    question: (c, w) => w.detail,
+    ask: () => [],
+  },
+  {
     code: "NOT_VISIBLE",
     fires: (c) => leg(c, (l) => l.class === "NOT_VISIBLE"),
     party: () => "user",
@@ -118,9 +133,13 @@ const RULES = [
 const OPEN = { journey: "INSUFFICIENT_EVIDENCE", party: "unknown" };
 const ASK_MORE = { party: "unknown", question: "What could not be read, and can it be checked again?", evidenceToAsk: ["a retry, or another identifier for this order"] };
 
+const SETTLED = ["PAID_OUT", "REFUNDED"];
+const unproven = (l) => (SETTLED.includes(l.status) && !isProven(l)) || l.status === "PAYOUT_UNSEEN" || l.status === "NOT_PROVEN";
+
 function conservationOf(legs) {
   const out = [];
   for (const l of legs) {
+    if (l.unchecked) out.push({ leg: l.id ?? l.provider, ok: null, reason: l.unchecked });
     if (l.amountIn === undefined || l.amountOut === undefined) continue;
     const outs = [l.amountOut].flat();
     const fees = l.fees ?? [];
@@ -145,13 +164,14 @@ export function evaluate(caseData, at) {
     const action = { party: rule.party(caseData, hit), question: rule.question(caseData, hit), evidenceToAsk: rule.ask(caseData, hit) };
     if (rule.soft) {
       if (!r.nextAction || r.nextAction.party === "none") r.nextAction = action;
-    } else {
+    } else if (!rule.settles || !r.journey || SETTLED.includes(r.journey)) {
       r.journey = rule.code;
       r.nextAction = action;
     }
   }
   const failed = caseData.legs.some((l) => l.status === "LOOKUP_FAILED");
-  if (failed || !r.journey) {
+  const halfProven = SETTLED.includes(r.journey) && caseData.legs.some(unproven);
+  if (failed || !r.journey || halfProven) {
     r.findings.push(OPEN.journey);
     r.findingClasses[OPEN.journey] = "UNKNOWN";
     r.journey = OPEN.journey;

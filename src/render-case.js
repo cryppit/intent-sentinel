@@ -1,5 +1,5 @@
 // What the page shows for a verdict, kept pure so it can be tested. Evidence classes are words, never colour alone.
-import { headline, STATUS_WORDS } from "./render-text.js";
+import { balanceWords, headline, STATUS_WORDS } from "./render-text.js";
 import { CLASS_WORDS } from "./words.js";
 
 const EXPLORERS = {
@@ -28,5 +28,8 @@ export function caseView(verdict) {
       classLabel: title(CLASS_WORDS[l.class] ?? l.class),
       failed: l.status === "LOOKUP_FAILED",
     })),
+    claims: verdict.claims.map((c) => `${c.by} says ${c.status}`),
+    balances: verdict.conservation.map(balanceWords),
+    warnings: (verdict.warnings ?? []).map((w) => w.detail),
   };
 }

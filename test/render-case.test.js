@@ -26,3 +26,15 @@ test("known sources link to an explorer", () => {
   assert.equal(explorerUrl("btc", "b1"), "https://mempool.space/tx/b1");
 });
 test("an unknown source has no link", () => assert.equal(explorerUrl("nowhere", "x"), null));
+
+test("claims and balances reach the page", async () => {
+  const c = caseWith([{ provider: "x", status: "CREDITED", amountIn: "1", amountOut: ["1"], decimals: 0 }, paidOutLeg], [{ by: "1click", status: "FAILED", observedAt: AT, class: "REPORTED" }]);
+  const view = caseView(await buildVerdict(c));
+  assert.deepEqual(view.claims, ["1click says FAILED"]);
+  assert.match(view.balances[0], /balance/);
+});
+test("a warning reaches the page", async () => {
+  const c = caseWith([paidOutLeg]);
+  c.warnings = [{ kind: "locked", party: "near-intents", detail: "locked by operators" }];
+  assert.deepEqual(caseView(await buildVerdict(c)).warnings, ["locked by operators"]);
+});

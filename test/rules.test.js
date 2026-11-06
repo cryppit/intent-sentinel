@@ -87,3 +87,41 @@ test("a long hash is shortened in a question", () => {
   assert.ok(r.nextAction.question.includes("3hd4Kz…ppE5"));
   assert.ok(!r.nextAction.question.includes(ref));
 });
+
+// Review fixes
+const held = { provider: "near-intents", status: "HELD", window: { dueBy: BEFORE } };
+test("a settled leg can't erase an open one", () => {
+  const r = evaluate(caseWith([held, paidOutLeg]), AT);
+  assert.equal(r.journey, "BALANCE_HELD");
+  assert.equal(r.nextAction.party, "near-intents");
+});
+test("a refund can't erase a missing deposit", () =>
+  assert.equal(evaluate(caseWith([{ provider: "tron", status: "DEPOSIT_NOT_FOUND" }, { provider: "x", status: "REFUNDED" }]), AT).nextAction.party, "user"));
+test("an inferred end leg stops a case reading as finished", () =>
+  assert.equal(evaluate(caseWith([paidOutLeg, { provider: "x", status: "REFUNDED", class: "INFERRED" }]), AT).journey, "INSUFFICIENT_EVIDENCE"));
+test("a payout nobody found stops a case reading as finished", () =>
+  assert.equal(evaluate(caseWith([paidOutLeg, { provider: "x", status: "PAYOUT_UNSEEN", class: "UNKNOWN" }]), AT).journey, "INSUFFICIENT_EVIDENCE"));
+test("a proven finished Omni transfer has nothing left to do", () => {
+  const r = evaluate(caseWith([{ provider: "omni", status: "FINALISED" }]), AT);
+  assert.equal(r.journey, "PAID_OUT");
+  assert.equal(r.nextAction.party, "none");
+});
+test("a finish only the indexer reports isn't called done", () => {
+  const r = evaluate(caseWith([{ provider: "omni", status: "FINALISED", class: "REPORTED" }]), AT);
+  assert.equal(r.journey, "FINISH_REPORTED");
+  assert.notEqual(r.nextAction.party, "none");
+});
+test("a tracer warning outranks a settled order", () => {
+  const c = caseWith([paidOutLeg]);
+  c.warnings = [{ kind: "destination_missing", party: "user", detail: "no NEAR account is named x yet" }];
+  const r = evaluate(c, AT);
+  assert.equal(r.journey, "TRACE_WARNING");
+  assert.equal(r.nextAction.party, "user");
+  assert.match(r.nextAction.question, /no NEAR account/);
+});
+test("an unchecked balance is shown, and isn't a mismatch", () => {
+  const r = evaluate(caseWith([{ provider: "x", status: "CREDITED", unchecked: "a swap changes the token" }, paidOutLeg]), AT);
+  assert.equal(r.conservation[0].ok, null);
+  assert.equal(r.conservation[0].reason, "a swap changes the token");
+  assert.ok(!r.findings.includes("CONSERVATION_MISMATCH"));
+});

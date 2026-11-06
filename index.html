@@ -55,6 +55,8 @@
   .cls { font: 600 12px var(--mono); padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; }
   .c-proven { color: var(--lime); } .c-reported { color: var(--blue); } .c-inferred { color: var(--amber); } .c-unknown, .c-not_visible { color: var(--mute); }
   .proof li { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 13px var(--mono); color: var(--mute); }
+  .notes { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; color: var(--mute); font-size: 14px; }
+  .notes .warn { color: var(--amber); }
   .ghost { margin-top: 22px; }
   .hash { margin: 12px 0 0; color: var(--mute); font: 12px var(--mono); overflow-wrap: anywhere; }
   .reading { color: var(--mute); }
@@ -75,7 +77,7 @@
   <h1>Your swap is stuck. <em>Who acts next?</em></h1>
   <p class="lede">Paste one id from a cross-chain swap. See what each step proves, and who has to move. It reads public chains from your browser. It holds no keys and signs nothing.</p>
   <form id="form">
-    <input id="id" autocomplete="off" spellcheck="false" aria-label="Transaction hash, address or Omni transfer id" placeholder="NEAR or EVM hash, Solana signature, or Near:563760" required>
+    <input id="id" autocomplete="off" spellcheck="false" aria-label="Transaction hash, address or Omni transfer id" placeholder="NEAR or EVM hash, or Near:563760" required>
     <button class="go">Open case</button>
   </form>
   <ul class="tries">

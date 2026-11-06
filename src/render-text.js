@@ -6,7 +6,10 @@ export const STATUS_WORDS = {
   HELD: "held", PAID_OUT: "paid out", REFUNDED: "refunded", CONTRACT_FORWARDED: "forwarded by a contract",
   INGRESS_CONFIRMED_EGRESS_UNKNOWN: "received, payout unknown", INITIALISED: "started, not finished", SIGNED: "signed, not finished",
   FINALISED: "finished", NOT_VISIBLE: "confidential", LOOKUP_FAILED: "could not be read",
+  PAYOUT_UNSEEN: "payout not found", NOT_PROVEN: "claimed, not proven",
 };
+
+export const balanceWords = (x) => `amounts on ${x.leg}: ${x.ok === null ? `not checked (${x.reason})` : x.ok ? "balance" : "do not balance"}`;
 
 export function headline(verdict) {
   const { party } = verdict.nextAction;
@@ -25,7 +28,8 @@ export function renderText(verdict) {
     lines.push(`  ${words} (${CLASS_WORDS[leg.class] ?? leg.class})`);
   }
   for (const c of verdict.claims) lines.push(`  ${c.by} says ${c.status} (reported)`);
-  for (const x of verdict.conservation) lines.push(`  amounts on ${x.leg}: ${x.ok ? "balance" : "do not balance"}`);
+  for (const x of verdict.conservation) lines.push(`  ${balanceWords(x)}`);
+  for (const w of verdict.warnings ?? []) lines.push(`  warning: ${w.detail}`);
   lines.push("", `Incident ${verdict.incident.slice(0, 16)}…  hash ${verdict.outputHash.slice(0, 16)}…`);
   return lines.join("\n");
 }

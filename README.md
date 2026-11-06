@@ -12,7 +12,7 @@ Intent Sentinel reads the public chains and returns a case file:
 
 - every step of the route, and what proves it;
 - the one party who has to act next, and the question to ask them;
-- a verdict with a hash, so the same evidence always gives the same bytes.
+- a verdict with a hash. The same evidence gives the same bytes, so reading an unchanged case again gives the same hash.
 
 It is read-only. It holds no keys, signs nothing and moves no funds. If a step can be finished, it describes the step and never runs it.
 
@@ -65,7 +65,7 @@ You should see `Nobody needs to act`, `amounts on credit: balance`, and exit cod
 node cli.js check Near:563760
 ```
 
-You should see the same answer as step 2, unless the transfer has moved since. A source that can't be read gives exit code 3 and `We can't give an answer yet`, never a clean verdict.
+You should see the same answer as step 2, unless the transfer has moved since. Run it twice with `--json` and the verdict hash matches, because a verdict's time comes from the chain and not the clock. A new chain event or a 1Click claim changes the hash. A source that can't be read gives exit code 3 and `We can't give an answer yet`, never a clean verdict.
 
 **5. Run the tests**
 
@@ -89,20 +89,20 @@ You should see the verdict, the proven evidence, a timeline and the open questio
 node cli.js root fixtures --day 2026-11-05 --account sentinel.cryppit.testnet
 ```
 
-You should see the Merkle root of the three verdicts and the `near` command to pin it. The tool prints that command and never runs it.
+You should see the Merkle root of the three packets and the `near` command to pin it. The tool prints that command and never runs it.
 
 ## How NEAR fits
 
 - It reads NEAR Intents orders on `intents.near`, through FastNEAR and public RPCs.
-- It reads Omni bridge transfers from the bridge's indexer, and checks the destination contract because the indexer can lag.
-- Each day's verdict hashes form an RFC 6962 Merkle root that can be pinned on NEAR. Anyone holding a packet can then prove it existed unchanged that day, by a public view call: `node cli.js verify`.
+- It reads Omni bridge transfers from the bridge's indexer, which can lag, then checks the chain: the destination contract on EVM chains, or the finishing transaction on Solana, Bitcoin and NEAR. Without a chain read, a status stays `REPORTED`.
+- Each day's evidence packets form an RFC 6962 Merkle root that can be pinned on NEAR. With a packet and its proof from `node cli.js prove`, anyone can check by a public view call that it existed unchanged that day: `node cli.js verify`. A changed verdict or changed evidence fails.
 - An agent can read a verdict before it retries a swap or re-sends funds.
 
 ## How a verdict is made
 
 1. `src/adapters/` read public sources into legs and evidence.
-2. `src/rules.js` runs 16 fixed rules in a fixed order. No LLM decides anything.
-3. `src/verdict.js` builds the verdict and its hash. `computedAt` is the latest evidence time, not the clock.
+2. `src/rules.js` runs fixed rules in a fixed order. No LLM decides anything. A proven payout on one leg never closes a case while another leg is open or unproven. Some rules, such as the Chainflip ones, wait for adapters that don't exist yet.
+3. `src/verdict.js` builds the verdict and its hash. `computedAt` is the latest chain event, not the clock.
 
 Every fact has an evidence class:
 
@@ -118,7 +118,9 @@ Every fact has an evidence class:
 
 - It covers NEAR Intents orders and Omni transfers. It doesn't yet trace Chainflip's payout side, so such a leg stays unknown.
 - A confidential leg is never guessed at, and private halves are never paired by amount or time.
-- 1Click status is a claim, held in memory only. Only its category and the time it was seen are kept, so no 1Click reply is stored.
+- 1Click status is a claim, held in memory only. For a deposit address it also finds the NEAR order, and the case then rests on what the chain shows. Only the claim's category and the time it was seen are kept, so no 1Click reply is stored.
+- Solana signatures work in the CLI. The public Solana RPC refuses browsers, so the page reports that source as unreadable.
+- Amounts are checked on the NEAR ledger only, and only with no swap. Otherwise the case says they weren't checked.
 - A failed lookup is reported as that. It never reads as success.
 - It names who acts next, not who is to blame.
 
@@ -127,7 +129,7 @@ Every fact has an evidence class:
 Per NEAR HACKATHON Q-002, Q-003 and Q-005:
 
 - **Existing, declared baseline:** `vendor/wms-core.mjs`, the order tracer from [Where's My Swap](https://github.com/cryppit/wheres-my-swap) at `76cac26` (MIT). The Merkle tree design and the pin contract's arguments come from Cryppit's earlier NEAR anchor work.
-- **New in this repo:** everything else, including the identifiers, evidence model, 16 rules, verdict and hash, adapters, case builder, evidence packet, daily root, CLI, page and recorded cases.
+- **New in this repo:** everything else, including the identifiers, evidence model, rules, verdict and hash, adapters, case builder, evidence packet, daily root, CLI, page and recorded cases.
 
 AI coding tools were used to build it, under the founder's direction.
 

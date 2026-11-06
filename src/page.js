@@ -34,6 +34,11 @@ function show({ caseData, verdict }, note) {
     legs.append(el("li", { class: leg.failed ? "failed" : "" }, el("span", { class: "who" }, leg.provider), el("span", { class: "what" }, leg.label), el("span", { class: `cls c-${leg.class.toLowerCase()}` }, leg.classLabel)));
   }
 
+  const notes = el("ul", { class: "notes" });
+  for (const w of view.warnings) notes.append(el("li", { class: "warn" }, w));
+  for (const c of view.claims) notes.append(el("li", {}, c, " ", el("span", { class: "cls c-reported" }, "Reported")));
+  for (const b of view.balances) notes.append(el("li", {}, b));
+
   const proof = el("ul", { class: "proof" });
   for (const t of packet.timeline) {
     const url = explorerUrl(t.source, t.ref);
@@ -45,6 +50,7 @@ function show({ caseData, verdict }, note) {
   save.addEventListener("click", () => download(packet));
   const foot = el("p", { class: "hash" }, `Verdict hash ${shortRef(verdict.outputHash)} · rules ${verdict.rulesVersion}`);
   out.replaceChildren(head, el("h3", {}, "What each step proves"), legs);
+  if (notes.children.length) out.append(notes);
   if (packet.timeline.length) out.append(el("h3", {}, "Proof"), proof);
   out.append(save, foot);
   out.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -63,9 +69,13 @@ async function replay(name) {
 $("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   say("Reading the chains from your browser…");
-  const r = await openCase($("id").value, { now: new Date().toISOString() });
-  if (r.error) return say(r.error, "error");
-  show(r);
+  try {
+    const r = await openCase($("id").value, { now: new Date().toISOString() });
+    if (r.error) return say(r.error, "error");
+    show(r);
+  } catch {
+    say("Something went wrong reading that case, so there's no answer. Please try again.", "error");
+  }
 });
 
 for (const b of document.querySelectorAll("[data-case]")) b.addEventListener("click", () => replay(b.dataset.case));

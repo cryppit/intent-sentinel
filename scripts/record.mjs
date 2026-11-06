@@ -5,7 +5,7 @@ import { openCase } from "../src/case.js";
 
 const [name, id] = process.argv.slice(2);
 if (!name || !id) throw new Error("usage: node scripts/record.mjs <name> <identifier>");
-const r = await openCase(id, { now: new Date().toISOString(), adapters: { claim: async () => null } });
+const r = await openCase(id, { now: new Date().toISOString(), adapters: { status: async () => null } });
 if (r.error) throw new Error(r.error);
 if (r.caseData.claims.some((c) => c.by === "1click")) throw new Error("refusing to record 1Click data");
 mkdirSync(`fixtures/${name}`, { recursive: true });

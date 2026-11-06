@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const run = (...args) => spawnSync("node", ["cli.js", ...args], { encoding: "utf8" });
 
@@ -39,9 +42,18 @@ test("root prints the Merkle root and the command to pin it, and signs nothing",
   assert.match(r.stdout, /near contract call-function as-transaction sentinel\.cryppit\.testnet pin/);
 });
 test("root needs a day", () => assert.equal(run("root", "fixtures").status, 1));
-test("prove gives a proof for a recorded verdict", () => {
-  const { verdict } = JSON.parse(run("replay", "omni-665", "--json").stdout);
-  const p = JSON.parse(run("prove", "fixtures", verdict.outputHash).stdout);
+test("prove gives a proof for a recorded case", () => {
+  const p = JSON.parse(run("prove", "fixtures", "omni-665").stdout);
   assert.equal(p.size, 3);
   assert.ok(Array.isArray(p.path));
+});
+test("a tampered packet is refused from a root", () => {
+  const dir = mkdtempSync(join(tmpdir(), "is-"));
+  const packet = JSON.parse(run("replay", "omni-665", "--json").stdout);
+  packet.verdict.journey = "REFUNDED";
+  writeFileSync(join(dir, "a.json"), JSON.stringify(packet));
+  const r = run("root", dir, "--day", "2026-11-05");
+  rmSync(dir, { recursive: true });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /doesn't match/);
 });

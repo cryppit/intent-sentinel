@@ -35,3 +35,18 @@ test("claims keep only their four fields", async () => {
 });
 test("the verdict's legs show provider, status and class", async () =>
   assert.deepEqual((await buildVerdict(c)).legs[0], { provider: "near-intents", status: "PAID_OUT", class: "PROVEN" }));
+
+test("reading a case again later doesn't change its hash", async () => {
+  const at = (t) => { const d = structuredClone(c); d.evidence.push({ id: "r", source: "t", kind: "read", ref: "x", observedAt: t, class: "PROVEN" }); return d; };
+  assert.equal((await buildVerdict(at(AT))).outputHash, (await buildVerdict(at(AFTER))).outputHash);
+});
+test("a stuck rule still sees when we looked", async () => {
+  const d = caseWith([{ provider: "near-intents", status: "HELD", window: { dueBy: AT } }]);
+  d.evidence.push({ id: "r", source: "t", kind: "read", ref: "x", observedAt: AFTER, class: "PROVEN" });
+  assert.equal((await buildVerdict(d)).journey, "BALANCE_HELD");
+});
+test("warnings reach the verdict", async () => {
+  const d = caseWith([paidOutLeg]);
+  d.warnings = [{ kind: "locked", party: "near-intents", detail: "locked by operators" }];
+  assert.deepEqual((await buildVerdict(d)).warnings, [{ kind: "locked", detail: "locked by operators" }]);
+});

@@ -3183,6 +3183,8 @@ export {
   checkOrderWithFallback,
   fastnearClient,
   fastnearUnavailable,
+  payingWithdrawal,
   publicOriginClient,
-  publicPayoutClient
+  publicPayoutClient,
+  searchPayout
 };

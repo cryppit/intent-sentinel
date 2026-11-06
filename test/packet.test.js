@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPacket } from "../src/packet.js";
+import { buildPacket, packetHash, verifyPacket } from "../src/packet.js";
 import { renderText } from "../src/render-text.js";
 import { buildVerdict } from "../src/verdict.js";
 import { canonicalJson } from "../src/canon.js";
@@ -44,3 +44,23 @@ test("an unreadable source says so, and doesn't look finished", async () => {
   const c = caseWith([paidOutLeg, { provider: "omni", status: "LOOKUP_FAILED", class: "UNKNOWN" }]);
   assert.match(renderText(await buildVerdict(c)), /could not read omni/i);
 });
+
+test("a true packet checks out", async () => assert.equal(await verifyPacket(buildPacket(base, v)), true));
+test("a changed verdict is caught even with its old hash", async () => {
+  const p = structuredClone(buildPacket(base, v));
+  p.verdict.journey = "REFUNDED";
+  assert.equal(await verifyPacket(p), false);
+});
+test("the packet hash covers the evidence too", async () => {
+  const p = buildPacket(base, v);
+  const q = structuredClone(p);
+  q.evidence[0].ref = "changed";
+  assert.notEqual(await packetHash(p), await packetHash(q));
+});
+test("warnings are printed", async () => {
+  const c = caseWith([paidOutLeg]);
+  c.warnings = [{ kind: "locked", party: "near-intents", detail: "locked by operators" }];
+  assert.match(renderText(await buildVerdict(c)), /locked by operators/);
+});
+test("a balance not checked says so", async () =>
+  assert.match(renderText(await buildVerdict(caseWith([{ provider: "x", status: "CREDITED", unchecked: "a swap changes the token" }, paidOutLeg]))), /not checked/));

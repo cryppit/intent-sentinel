@@ -16,6 +16,8 @@ const ctxFor = ({ transfer, paid = false, dead = false, solana } = {}) => ({
   fetch: async (url) => {
     if (dead) throw new TypeError("fetch failed");
     if (String(url).includes("solana")) return res({ result: solana ?? null });
+    if (String(url).includes("mempool.space")) return res({ confirmed: true });
+    if (String(url).includes("fastnear")) return res({ transactions: [{ transaction: { hash: "DEST" } }] });
     return transfer ? res({ transfers: [transfer] }) : res("Not found", 404);
   },
 });
@@ -40,8 +42,26 @@ test("an initialised transfer is a gated leg", async () => {
 test("the contract beats a lagging indexer", async () => {
   const r = await readTransfer("near:7", ctxFor({ transfer: v4({ status: "Signed" }), paid: true }));
   assert.equal(r.legs[0].status, "FINALISED");
+  assert.equal(r.legs[0].class, "PROVEN");
   assert.equal(r.legs[0].finish, undefined);
 });
+test("a contract view makes the unpaid state proven", async () =>
+  assert.equal((await readTransfer("near:7", ctxFor({ transfer: v4() }))).legs[0].class, "PROVEN"));
+test("with no contract to read, the indexer is only a report", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: v4({ destination_chain: "Near", origin_chain: "Sol" }) }));
+  assert.equal(r.legs[0].class, "REPORTED");
+});
+test("a contract that can't be read is a failed read, not a clean answer", async () => {
+  const r = await readTransfer("near:7", { ...ctxFor({ transfer: v4({ status: "Signed" }) }), omniPaid: async () => null });
+  assert.ok(r.legs.some((l) => l.status === "LOOKUP_FAILED"));
+});
+test("BNB reaches the tracer under its own chain key", async () => {
+  let asked = null;
+  await readTransfer("near:7", { ...ctxFor({ transfer: v4({ destination_chain: "Bnb" }) }), omniPaid: async (c) => { asked = c; return false; } });
+  assert.equal(asked, "bsc");
+});
+test("the contract view is not a dated event", async () =>
+  assert.ok((await readTransfer("near:7", ctxFor({ transfer: v4() }))).evidence.every((e) => e.kind !== "read" || e.observedAt === NOW)));
 test("a transfer's chain time becomes evidence", async () =>
   assert.equal((await readTransfer("near:7", ctxFor({ transfer: v4() }))).evidence[0].observedAt, "2026-09-28T10:16:23.000Z"));
 test("a dead indexer gives a failed leg", async () =>
@@ -57,3 +77,18 @@ test("a Solana tx that isn't the bridge's is not a case", async () =>
   assert.ok((await readTransfer(SIG, ctxFor({ solana: solanaTx(["Program 1111 invoke [1]"]) }))).notFound));
 test("a failed Solana tx is not a deposit", async () =>
   assert.ok((await readTransfer(SIG, ctxFor({ solana: solanaTx(OMNI_LOGS, { InstructionError: [0, "Custom"] }) }))).notFound));
+
+const settled = (dest, tx = "DEST") => v4({ destination_chain: dest, status: "Settled", finalised: { transaction_hash: tx, chain: dest, timestamp_seconds: 1790590606 } });
+test("a finish to Solana is proven by its transaction", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: settled("Sol"), solana: solanaTx([]) }));
+  assert.deepEqual([r.legs[0].status, r.legs[0].class], ["FINALISED", "PROVEN"]);
+  assert.ok(r.evidence.some((e) => e.ref === "DEST" && e.class === "PROVEN" && e.observedAt === "2026-09-28T10:16:46.000Z"));
+});
+test("a finish to Bitcoin is proven by its confirmation", async () =>
+  assert.equal((await readTransfer("near:7", ctxFor({ transfer: settled("Btc") }))).legs[0].class, "PROVEN"));
+test("a finish into NEAR is proven by its transaction", async () =>
+  assert.equal((await readTransfer("sol:7", ctxFor({ transfer: settled("Near") }))).legs[0].class, "PROVEN"));
+test("a finish whose transaction can't be read stays reported", async () =>
+  assert.equal((await readTransfer("near:7", ctxFor({ transfer: settled("Sol") }))).legs[0].class, "REPORTED"));
+test("a failed destination transaction doesn't prove a finish", async () =>
+  assert.equal((await readTransfer("near:7", ctxFor({ transfer: settled("Sol"), solana: solanaTx([], { InstructionError: [0, "x"] }) }))).legs[0].class, "REPORTED"));

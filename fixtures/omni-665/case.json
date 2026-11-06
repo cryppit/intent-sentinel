@@ -43,9 +43,10 @@
       "source": "omni",
       "kind": "read",
       "ref": "Near:563760",
-      "observedAt": "2026-11-06T04:56:45.704Z",
+      "observedAt": "2026-11-06T05:34:57.053Z",
       "class": "PROVEN"
     }
   ],
-  "claims": []
+  "claims": [],
+  "warnings": []
 }

@@ -1,3 +1,5 @@
+import { canonicalJson, sha256Hex } from "./canon.js";
+
 // The evidence packet (spec section 8): what a support team can be handed. Proven facts only; no 1Click payload can get
 // here, because claims are reduced in the verdict and only PROVEN evidence is copied.
 export function buildPacket(caseData, verdict) {
@@ -13,4 +15,13 @@ export function buildPacket(caseData, verdict) {
     timeline,
     openQuestions: question ? [{ question, evidenceToAsk }] : [],
   };
+}
+
+/** What goes in the daily root: the whole packet, so changing the evidence is caught as well as changing the verdict. */
+export const packetHash = (packet) => sha256Hex(canonicalJson(packet));
+
+/** Recomputes the verdict's hash, so a packet can't be edited and keep its old one. */
+export async function verifyPacket(packet) {
+  const { outputHash, ...rest } = packet.verdict;
+  return outputHash === (await sha256Hex(canonicalJson(rest)));
 }
