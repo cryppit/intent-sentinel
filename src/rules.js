@@ -134,7 +134,8 @@ const OPEN = { journey: "INSUFFICIENT_EVIDENCE", party: "unknown" };
 const ASK_MORE = { party: "unknown", question: "What could not be read, and can it be checked again?", evidenceToAsk: ["a retry, or another identifier for this order"] };
 
 const SETTLED = ["PAID_OUT", "REFUNDED"];
-const unproven = (l) => (SETTLED.includes(l.status) && !isProven(l)) || l.status === "PAYOUT_UNSEEN" || l.status === "NOT_PROVEN";
+const STILL_OPEN = ["PAYOUT_UNSEEN", "NOT_PROVEN", "HELD", "CREDIT_PENDING"];
+const unproven = (l) => (SETTLED.includes(l.status) && !isProven(l)) || STILL_OPEN.includes(l.status);
 
 function conservationOf(legs) {
   const out = [];

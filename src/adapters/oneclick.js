@@ -14,8 +14,8 @@ export async function readStatus(depositAddress, ctx) {
     const r = await getJson(`${STATUS}?depositAddress=${encodeURIComponent(depositAddress)}`, ctx);
     const claim = { by: "1click", status: CATEGORY[r.status] ?? "UNKNOWN", observedAt: ctx.now, class: "REPORTED" };
     return { claim, nearTx: r.swapDetails?.nearTxHashes?.[0] ?? null };
-  } catch {
-    return null;
+  } catch (e) {
+    return /answered 404/.test(e.message) ? null : { claim: null, nearTx: null, failed: true };
   }
 }
 

@@ -20,6 +20,19 @@ export const getJson = (url, ctx = {}) => withRetry(() => attempt(ctx.fetch ?? f
 export const postJson = (url, body, ctx = {}) =>
   withRetry(() => attempt(ctx.fetch ?? fetch, url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
 
+/** One try, for a caller that has other endpoints to move on to. */
+export const postJsonOnce = (url, body, ctx = {}) =>
+  attempt(ctx.fetch ?? fetch, url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+/** The work's answer, or the fallback if it takes longer than ms. */
+export function withDeadline(work, ms, fallback) {
+  let timer;
+  const limit = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([work, limit]).finally(() => clearTimeout(timer));
+}
+
 /** What every adapter returns when a source could not be read: never success, and it says which source. */
 export function failedRead(provider, ref, reason, now) {
   return {

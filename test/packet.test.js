@@ -21,7 +21,7 @@ test("no 1Click payload survives", () => {
   const p = buildPacket(base, v);
   assert.ok(!canonicalJson(p).includes("secret"));
   assert.ok(!canonicalJson(p).includes("swapDetails"));
-  assert.deepEqual(Object.keys(p.verdict.claims[0]).sort(), ["by", "class", "observedAt", "status"]);
+  assert.deepEqual(Object.keys(p.verdict.claims[0]).sort(), ["by", "class", "status"]);
 });
 test("the timeline runs oldest first and skips our own reads", () =>
   assert.deepEqual(buildPacket(base, v).timeline.map((t) => t.ref), ["OLD", "r"]));

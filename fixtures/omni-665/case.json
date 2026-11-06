@@ -24,7 +24,8 @@
         "fee": "0",
         "nativeFee": "28243989228000",
         "from": "Near",
-        "to": "Eth"
+        "to": "Eth",
+        "originProven": true
       }
     }
   ],
@@ -43,7 +44,7 @@
       "source": "omni",
       "kind": "read",
       "ref": "Near:563760",
-      "observedAt": "2026-11-06T05:34:57.053Z",
+      "observedAt": "2026-11-06T09:00:16.674Z",
       "class": "PROVEN"
     }
   ],

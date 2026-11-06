@@ -5,6 +5,7 @@ import { readTransfer } from "./adapters/omni.js";
 import { readTx } from "./adapters/evm.js";
 import { readIdentifier } from "./incident.js";
 import { buildVerdict } from "./verdict.js";
+import { failedRead } from "./net.js";
 
 const MAX_HOPS = 8;
 const LIVE = { order: readOrder, transfer: readTransfer, evmTx: readTx, status: readStatus };
@@ -36,7 +37,10 @@ async function firstAnswer(id, a, ctx, status) {
   if (id.kind === "omni-transfer") return a.transfer(id.value, ctx);
   const order = await a.order(id.value, ctx);
   if (!order.notFound) return order;
-  if (id.kind === "deposit-address") return status?.nearTx ? a.order(status.nearTx, ctx) : order;
+  if (id.kind === "deposit-address") {
+    if (status?.nearTx) return a.order(status.nearTx, ctx);
+    return status?.failed ? failedRead("1click", id.value, "1Click could not be read", ctx.now) : order;
+  }
   const omni = await a.transfer(id.value, ctx);
   return omni.notFound ? order : omni;
 }

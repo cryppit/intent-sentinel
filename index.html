@@ -68,6 +68,7 @@
   .stage-head p { margin: 4px 0 0; font-size: 14px; color: var(--mute); }
   .demo-toggle { flex: none; padding: 7px 13px; border-radius: 10px; border: 1px solid var(--line); background: rgba(4, 6, 26, 0.6); color: var(--ink); font-size: 13px; font-weight: 600; }
   .demo-toggle:hover { border-color: var(--lime); }
+  .demo-toggle:disabled { opacity: 0.5; cursor: progress; }
 
   .cases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
   .case { width: 100%; height: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 13px; border: 1px solid var(--line); background: rgba(6, 9, 34, 0.86); color: var(--ink); text-align: left; transition: border-color 0.2s, box-shadow 0.2s; }
@@ -102,6 +103,7 @@
   .stop.passed .coin::after { content: "✓"; position: absolute; right: -4px; bottom: -2px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--lime); color: #04061a; font-size: 14px; font-weight: 900; }
   .stop.here .coin { border-color: var(--c); box-shadow: 0 0 34px -2px var(--c); }
   .stop.here .coin::before { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid var(--c); opacity: 0; animation: ring 2s ease-out infinite; animation-delay: calc(var(--i) * 0.42s + 0.4s); }
+  .stop.seen .coin { border-style: dashed; border-color: var(--amber); }
   .stop.ahead { opacity: 0.62; }
   .stop.ahead .coin { border-style: dashed; }
   .stop.ahead .coin img { filter: grayscale(0.7); }
@@ -325,7 +327,7 @@
     <section class="feats" aria-label="What makes it different">
       <div class="feat"><b>Proof, not promises</b><p>A chain record counts as proven. A provider saying "done" only counts as reported.</p></div>
       <div class="feat"><b>One clear next move</b><p>It names who can act next and what to ask them. It doesn't assign blame.</p></div>
-      <div class="feat"><b>Same evidence, same answer</b><p>Fixed rules, no AI. Each answer has a fingerprint, so anyone can rerun it and compare. <a href="#explained">How it works</a></p></div>
+      <div class="feat"><b>Same evidence, same answer</b><p>Written rules, no AI. Each answer has a fingerprint, so anyone can rerun it and compare. <a href="#explained">How it works</a></p></div>
     </section>
   </div>
 
@@ -345,7 +347,7 @@
             <li><b>You paste one ID</b>A transaction hash, an explorer link, an Omni transfer ID or a deposit address.</li>
             <li><b>It reads public records</b>Your browser asks the chains and bridges directly. Cryppit runs no server for this.</li>
             <li><b>It labels every fact</b>Each step is marked proven, reported, inferred or not visible.</li>
-            <li><b>Fixed rules decide</b>18 written rules name the next move. If proof is missing, it says so instead of guessing.</li>
+            <li><b>Fixed rules decide</b>A fixed list of written rules names the next move. If proof is missing, it says so instead of guessing.</li>
           </ol>
         </section>
 
@@ -360,7 +362,7 @@
               <li class="stop ahead"><span class="coin"><img src="logos/ethereum.svg" alt="" width="38" height="38"></span><b>Dashed</b><span class="lbl">Not reached, or not seen</span></li>
             </ol>
           </div>
-          <p>A beam then points from the last stop to whoever can act next. If nobody needs to act, it points to "Nobody". Each stop also carries one of four labels:</p>
+          <p>A beam then points from the last stop to whoever can act next. If nobody needs to act, it points to "Nobody". Each stop also carries a label. A step that couldn't be read says Unknown, and a stop nobody has reached says Not seen.</p>
           <div class="grid4">
             <div class="tile"><span class="cls c-proven">Proven</span><b>A chain shows it</b>A transaction, receipt or contract says so.</div>
             <div class="tile"><span class="cls c-reported">Reported</span><b>A provider said so</b>Worth knowing, but it isn't proof.</div>
@@ -383,20 +385,19 @@
           <div class="grid4">
             <div class="tile who-t"><b>You</b>Something is waiting on your side.</div>
             <div class="tile who-t"><b>Your app</b>The wallet or site you swapped through.</div>
-            <div class="tile who-t"><b>Solver</b>The party that fills the swap.</div>
             <div class="tile who-t"><b>NEAR Intents</b>The system holding the balance.</div>
             <div class="tile who-t"><b>Omni relayer</b>The operator allowed to run a gated bridge step.</div>
             <div class="tile who-t"><b>Anyone</b>The last step is open, so anyone can run it.</div>
             <div class="tile who-t"><b>Nobody</b>The case is finished.</div>
-            <div class="tile who-t"><b>Someone else</b>A downstream provider, or nobody it can name yet.</div>
+            <div class="tile who-t"><b>Can't name yet</b>The evidence doesn't show who, so it says so.</div>
           </div>
         </section>
 
         <section class="sec" id="fingerprint">
           <h2>Why you can trust the answer</h2>
           <div class="grid3">
-            <div class="tile"><b>Same evidence, same answer</b>Each case gets an incident ID and a fingerprint. Anyone can rerun it and compare. A new chain event changes the fingerprint.</div>
-            <div class="tile"><b>A packet you can hand over</b>Download the evidence for a support ticket. It holds only proven chain evidence, and an edited packet fails verification.</div>
+            <div class="tile"><b>Same evidence, same answer</b>Each case gets an incident ID and a fingerprint covering the verdict and its proven chain records. Anyone can rerun it and compare. A new chain event changes it.</div>
+            <div class="tile"><b>A packet you can hand over</b>Download the case for a support ticket. Its evidence is proven chain records, and the verdict keeps its labels. Editing part of it breaks the fingerprint. A fully rebuilt packet would pass that check, so rerun the case or check a pin.</div>
             <div class="tile"><b>A daily pin on NEAR</b>A day's packets can be combined into one hash and pinned on NEAR, to show a record wasn't changed later. The tool is built, but no day has been pinned yet.</div>
           </div>
         </section>
@@ -414,7 +415,7 @@
 
         <section class="sec" id="privacy">
           <h2>Your privacy</h2>
-          <p>What you paste goes straight from your browser to public sources: chain endpoints, bridge records and public explorers. A deposit address also goes to 1Click, which is how the order is found. The page has no analytics, stores nothing in your browser and sends no referrer.</p>
+          <p>What you paste goes straight from your browser to public sources: chain endpoints, bridge records and public explorers. The page also fetches 1Click's public token list, which doesn't include what you pasted. A deposit address does go to 1Click, which is how the order is found. The page has no analytics, stores nothing in your browser and sends no referrer.</p>
         </section>
 
         <section class="sec" id="words">

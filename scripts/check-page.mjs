@@ -1,4 +1,4 @@
-// Drives real Chrome over the DevTools protocol and checks the page itself. Usage: node scripts/check-page.mjs [--live] [--shots dir]
+// Drives real Chrome over the DevTools protocol and checks the page itself. Usage: node scripts/check-page.mjs [--live] [--headed] [--shots dir]
 // Needs the site served on BASE (default http://127.0.0.1:5079). No dependencies.
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -13,7 +13,7 @@ const PORT = 9333;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const profile = mkdtempSync(join(tmpdir(), "sentinel-"));
-const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, "about:blank"], { stdio: "ignore" });
+const chrome = spawn(CHROME, [...(process.argv.includes("--headed") ? [] : ["--headless=new"]), "--disable-gpu", "--no-first-run", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, "about:blank"], { stdio: "ignore" });
 let target;
 for (let i = 0; i < 50 && !target; i++) {
   await wait(200);
@@ -98,6 +98,13 @@ check("a link into the guide opens the guide", await js("!document.getElementByI
 await click('#view-explained [data-open="refund-5btc"]');
 await wait(1500);
 check("open this case returns to Check with the case file", (await js("!document.getElementById('view-check').hidden")) && (await text("#out .verdict")).includes("Nobody needs to act"));
+check("open this case scrolls to the case file", (await js("scrollY")) > 0);
+await load();
+await click('#stage [data-case="omni-665"]');
+await wait(1200);
+await click("#demo-toggle");
+check("play hides the old case file", await js("document.getElementById('out').hidden"));
+await click("#demo-toggle");
 
 await load();
 for (const [input, want] of [["bc1hello", "doesn't look like"], ["foo:123", "doesn't look like"], ["alice.testnet", "testnet"]]) {
@@ -117,7 +124,7 @@ await send("Emulation.setEmulatedMedia", { features: [] });
 if (live) {
   for (const [input, want] of [["Near:563761", "Nobody needs to act"], ["Near:563650", "Nobody needs to act"]]) {
     await js(`document.getElementById('id').value=${JSON.stringify(input)};document.getElementById('form').requestSubmit()`);
-    for (let i = 0; i < 60 && (await text("#go")) !== "Open case →"; i++) await wait(1000);
+    for (let i = 0; i < 95 && (await text("#go")) !== "Open case →"; i++) await wait(1000);
     check(`live ${input}`, (await text("#answer")).includes(want), (await text("#answer")).replace(/\n/g, " / "));
     await wait(2600);
     await shot(`live-${input.replace(":", "-")}`);
@@ -129,15 +136,15 @@ if (live) {
   check("a slow live read can't overwrite a demo clicked after it", (await text("#answer")).includes("Omni relayer"));
 }
 
-check("no script errors or blocked requests", problems.length === 0, problems.slice(0, 6).join(" ; "));
 if (live) {
   await load();
   const sol = "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5";
   await js(`document.getElementById('id').value=${JSON.stringify(sol)};document.getElementById('form').requestSubmit()`);
-  for (let i = 0; i < 60 && (await text("#go")) !== "Open case →"; i++) await wait(1000);
+  for (let i = 0; i < 95 && (await text("#go")) !== "Open case →"; i++) await wait(1000);
   check("a Solana signature opens in the browser", (await text("#answer")).includes("Omni relayer"), (await text("#answer")).replace(/\n/g, " / "));
   await shot("live-solana", true);
 }
+check("no script errors or blocked requests", problems.length === 0, problems.slice(0, 6).join(" ; "));
 ws.close(); chrome.kill(); await wait(300); rmSync(profile, { recursive: true, force: true });
 console.log(failures ? `${failures} FAILED` : "all page checks passed");
 process.exit(failures ? 1 : 0);

@@ -27,10 +27,10 @@ test("a verdict carries the schema and rules version", async () => {
   assert.equal(v.rulesVersion, "1.0.0");
   assert.match(v.incident, /^iv1_/);
 });
-test("claims keep only their four fields", async () => {
+test("claims keep only who, what and how sure", async () => {
   const d = caseWith([paidOutLeg], [{ by: "1click", status: "SUCCESS", observedAt: AT, class: "REPORTED", swapDetails: { recipient: "secret" } }]);
   const v = await buildVerdict(d);
-  assert.deepEqual(Object.keys(v.claims[0]).sort(), ["by", "class", "observedAt", "status"]);
+  assert.deepEqual(Object.keys(v.claims[0]).sort(), ["by", "class", "status"]);
   assert.ok(!canonicalJson(v).includes("secret"));
 });
 test("the verdict's legs show provider, status and class", async () =>

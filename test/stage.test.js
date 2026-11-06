@@ -71,9 +71,10 @@ test("the coin's last known holder comes from the stop it stopped at", async () 
   assert.equal((await open("refund-5btc")).custody, "refund address");
 });
 
-test("a finished case with a confidential step still shows the whole route as passed", () => {
-  const v = stageView({ legs: [leg("eth", "DEPOSIT_CONFIRMED"), leg("near-intents", "NOT_VISIBLE", "NOT_VISIBLE"), leg("sol", "PAID_OUT")] }, verdict("none", "PAID_OUT"));
-  assert.deepEqual(v.stops.map((s) => s.state), ["passed", "passed", "passed"]);
+test("a confidential step gets no tick and doesn't stop a proven payout after it", async () => {
+  const c = { legs: [leg("eth", "DEPOSIT_CONFIRMED"), leg("near-intents", "NOT_VISIBLE", "NOT_VISIBLE"), leg("sol", "PAID_OUT")], evidence: [], claims: [], identifiers: ["x"] };
+  const v = stageView(c, await buildVerdict(c));
+  assert.deepEqual(v.stops.map((s) => s.state), ["passed", "seen", "passed"]);
   assert.equal(v.stops[1].class, "NOT_VISIBLE");
 });
 
@@ -102,7 +103,7 @@ test("place names read as words", () => {
 });
 
 test("a proven finished transfer reaches the chain it was heading to", () => {
-  const v = stageView({ legs: [leg("omni", "FINALISED", "PROVEN", { facts: { from: "Near", to: "Sol" } })] }, verdict("none", "PAID_OUT"));
+  const v = stageView({ legs: [leg("omni", "FINALISED", "PROVEN", { facts: { from: "Near", to: "Sol", originProven: true } })] }, verdict("none", "PAID_OUT"));
   assert.deepEqual(v.stops.map((s) => [s.name, s.state, s.label]), [["NEAR", "passed", "sent"], ["Omni bridge", "passed", "finished"], ["Solana", "passed", "arrived"]]);
 });
 

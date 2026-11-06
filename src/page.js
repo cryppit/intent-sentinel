@@ -3,6 +3,7 @@ import { openCase } from "./case.js";
 import { buildPacket } from "./packet.js";
 import { caseView, explorerUrl } from "./render-case.js";
 import { placeName, stageView } from "./stage.js";
+import { withDeadline } from "./net.js";
 import { shortRef } from "./words.js";
 import { buildVerdict } from "./verdict.js";
 
@@ -22,6 +23,7 @@ const SVG = "http://www.w3.org/2000/svg";
 const CASE_BUTTONS = [...document.querySelectorAll("#stage [data-case]")];
 const CASES = CASE_BUTTONS.map((b) => b.dataset.case);
 const CYCLE_MS = 8000;
+const READ_LIMIT_MS = 90_000;
 const calm = matchMedia("(prefers-reduced-motion: reduce)");
 const narrow = matchMedia("(max-width: 760px)");
 
@@ -75,13 +77,11 @@ function drawBeam(animate) {
   const from = stops.find((s) => s.classList.contains("here")) ?? stops.filter((s) => s.classList.contains("passed")).at(-1);
   const to = board.querySelector(".lit");
   if (!from || !to) return;
-  const r = rig.getBoundingClientRect();
-  const a = from.getBoundingClientRect();
-  const b = to.getBoundingClientRect();
-  const x1 = a.left + a.width / 2 - r.left;
-  const y1 = a.bottom - r.top + 2;
-  const x2 = b.left + b.width / 2 - r.left;
-  const y2 = b.top - r.top - 2;
+  // Offsets, not screen rectangles: the stops are still sliding in when this runs.
+  const x1 = track.offsetLeft + from.offsetLeft + from.offsetWidth / 2;
+  const y1 = track.offsetTop + from.offsetTop + from.offsetHeight + 2;
+  const x2 = board.offsetLeft + to.offsetLeft + to.offsetWidth / 2;
+  const y2 = board.offsetTop + to.offsetTop - 2;
   const mid = (y1 + y2) / 2;
   const d = `M${x1} ${y1} C${x1} ${mid} ${x2} ${mid} ${x2} ${y2}`;
   const path = document.createElementNS(SVG, "path");
@@ -124,7 +124,7 @@ function drawStage(view, picked, caseId) {
   board.replaceChildren(...view.parties.map(partyNode));
   const words = el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, view.tone === "unknown" ? "No answer yet" : "Next move"), el("p", { class: "a-who" }, picked.headline));
   if (picked.question) words.append(el("p", { class: "a-q" }, picked.question));
-  if (view.custody) words.append(el("span", { class: "held" }, `Funds last seen: ${view.custody}`));
+  if (view.custody) words.append(el("span", { class: "held" }, `Last proven with: ${view.custody}`));
   const more = el("button", { type: "button", class: "a-more" }, "See the full case →");
   more.addEventListener("click", () => {
     setPlaying(false);
@@ -180,11 +180,13 @@ function setPlaying(on) {
   clearInterval(timer);
   timer = on ? setInterval(step, CYCLE_MS) : null;
   toggle.textContent = on ? "Pause demo" : "Play demo";
+  if (on) hideCaseFile();
 }
 
 function busy(on) {
   go.disabled = on;
   go.textContent = on ? "Reading…" : "Open case →";
+  toggle.disabled = on;
 }
 
 async function loadRecorded(name) {
@@ -252,12 +254,12 @@ form.addEventListener("submit", async (e) => {
   hideCaseFile();
   stage.classList.add("reading");
   clearStage("unknown");
-  answer.replaceChildren(el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, "Reading"), el("p", { class: "a-who" }, "Reading the chains from your browser…"), el("p", { class: "a-q" }, "This can take up to 45 seconds.")));
+  answer.replaceChildren(el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, "Reading"), el("p", { class: "a-who" }, "Reading the chains from your browser…"), el("p", { class: "a-q" }, "This can take up to a minute and a half.")));
   for (const b of CASE_BUTTONS) b.setAttribute("aria-pressed", "false");
   busy(true);
   bringStageIntoView();
   try {
-    const r = await openCase($("id").value, { now: new Date().toISOString() });
+    const r = await withDeadline(openCase($("id").value, { now: new Date().toISOString() }), READ_LIMIT_MS, { error: "That took too long, so there's no answer. Please try again." });
     if (mine !== run) return;
     busy(false);
     if (r.error) return fail(r.error);
@@ -280,6 +282,7 @@ for (const b of document.querySelectorAll("#view-explained [data-open]")) {
   b.addEventListener("click", () => {
     setPlaying(false);
     location.hash = "#top";
+    showTab();
     openRecorded(b.dataset.open, true);
   });
 }

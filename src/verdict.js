@@ -4,6 +4,10 @@ import { incidentId } from "./incident.js";
 import { evaluate } from "./rules.js";
 import { SCHEMA, RULES_VERSION } from "./schema.js";
 
+/** The proven chain records a case rests on. Read times are left out, so reading an unchanged case again matches. */
+export const evidenceHash = (evidence) =>
+  sha256Hex(canonicalJson(evidence.filter((e) => e.class === "PROVEN" && e.kind !== "read").map(({ source, kind, ref, observedAt }) => ({ source, kind, ref, observedAt })).sort((a, b) => (canonicalJson(a) < canonicalJson(b) ? -1 : 1))));
+
 const latest = (times) => times.reduce((a, b) => (a === null || Date.parse(b) > Date.parse(a) ? b : a), null);
 
 export async function buildVerdict(caseData) {
@@ -23,7 +27,8 @@ export async function buildVerdict(caseData) {
     findings,
     findingClasses,
     conservation,
-    claims: caseData.claims.map(({ by, status, observedAt, class: cls }) => ({ by, status, observedAt, class: cls })),
+    claims: caseData.claims.map(({ by, status, class: cls }) => ({ by, status, class: cls })),
+    evidenceHash: await evidenceHash(caseData.evidence),
     ...(caseData.warnings?.length ? { warnings: caseData.warnings.map(({ kind, detail }) => ({ kind, detail })) } : {}),
   };
   return { ...verdict, outputHash: await sha256Hex(canonicalJson(verdict)) };

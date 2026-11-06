@@ -12,14 +12,14 @@ const v4 = (over = {}) => ({
   initialised: { transaction_hash: "INIT", chain: "Near", timestamp_seconds: 1790590583 }, signed: [], ...over,
 });
 const res = (body, status = 200) => new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
-const ctxFor = ({ transfer, paid = false, dead = false, solana } = {}) => ({
+const ctxFor = ({ transfer, paid = false, dead = false, solana, nearTx = { receipts: [] } } = {}) => ({
   now: NOW,
   omniPaid: async () => paid,
   fetch: async (url) => {
     if (dead) throw new TypeError("fetch failed");
     if (String(url).includes("solana")) return res({ result: solana ?? null });
     if (String(url).includes("mempool.space")) return res({ confirmed: true });
-    if (String(url).includes("fastnear")) return res({ transactions: [{ transaction: { hash: "DEST" } }] });
+    if (String(url).includes("fastnear")) return res({ transactions: nearTx ? [nearTx] : [] });
     return transfer ? res({ transfers: [transfer] }) : res("Not found", 404);
   },
 });
@@ -124,4 +124,34 @@ test("a Solana endpoint that refused means absence isn't proven", async () =>
 test("the page may reach every Solana endpoint", () => {
   const html = readFileSync("index.html", "utf8");
   for (const url of SOLANA_RPCS) assert.ok(html.includes(url), url);
+});
+
+const failedNear = { execution_outcome: { outcome: { status: { SuccessReceiptId: "R" } } }, receipts: [{ execution_outcome: { outcome: { status: { Failure: { ActionError: {} } } } } }] };
+
+test("a NEAR finish whose transaction failed doesn't prove anything", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: settled("Near"), nearTx: failedNear }));
+  assert.equal(r.legs[0].class, "REPORTED");
+});
+
+test("a start the chain can't confirm is reported, not proven", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: v4(), nearTx: null }));
+  assert.equal(r.legs[0].class, "REPORTED");
+  assert.equal(r.evidence.find((e) => e.kind === "tx").class, "REPORTED");
+  assert.equal(r.legs[0].facts.originProven, false);
+});
+
+test("a start the chain confirms is proven", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: v4() }));
+  assert.equal(r.legs[0].class, "PROVEN");
+  assert.equal(r.legs[0].facts.originProven, true);
+});
+
+test("a transfer with no start on record is never proven by an unpaid contract", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: v4({ initialised: null }) }));
+  assert.equal(r.legs[0].class, "REPORTED");
+});
+
+test("signed with no signing transaction stays reported, even when the contract is unpaid", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: v4({ status: "Signed", signed: [] }) }));
+  assert.equal(r.legs[0].class, "REPORTED");
 });

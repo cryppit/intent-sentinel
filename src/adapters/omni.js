@@ -35,17 +35,23 @@ async function paidOnContract(t, ctx) {
 
 const destinationTx = (t) => t.utxo_winning_tx_hash ?? t.finalised?.transaction_hash ?? null;
 
-/** Where no contract keeps a flag, the finishing transaction itself is the proof. True only when the chain confirms it. */
-async function confirmedOnChain(t, ctx) {
-  const tx = destinationTx(t);
+async function nearTxSucceeded(tx, ctx) {
+  const found = (await postJson(FASTNEAR_TX, { tx_hashes: [tx] }, ctx)).transactions?.[0];
+  if (!found) return false;
+  const outcomes = [found.execution_outcome, ...(found.receipts ?? []).map((r) => r.execution_outcome)];
+  return !outcomes.some((o) => o?.outcome?.status?.Failure);
+}
+
+/** True only when the chain itself shows the transaction succeeded. Chains we can't read here stay false. */
+async function onChain(chain, tx, ctx) {
   if (!tx) return false;
   try {
-    if (t.destination_chain === "Sol") {
+    if (chain === "Sol") {
       const found = await solanaTransaction(tx, ctx);
       return Boolean(found) && found.meta?.err === null;
     }
-    if (t.destination_chain === "Btc") return (await getJson(`${MEMPOOL}/tx/${tx}/status`, ctx)).confirmed === true;
-    if (t.destination_chain === "Near") return Boolean((await postJson(FASTNEAR_TX, { tx_hashes: [tx] }, ctx)).transactions?.length);
+    if (chain === "Btc") return (await getJson(`${MEMPOOL}/tx/${tx}/status`, ctx)).confirmed === true;
+    if (chain === "Near") return await nearTxSucceeded(tx, ctx);
   } catch {
     return false;
   }
@@ -58,18 +64,22 @@ async function transferToCase(t, ctx) {
   const paid = await paidOnContract(t, ctx);
   const contractRead = paid === true || paid === false;
   const status = paid === true || isFinal(t.status) ? "FINALISED" : /signed/i.test(t.status) ? "SIGNED" : "INITIALISED";
-  const confirmed = status === "FINALISED" && !contractRead && (await confirmedOnChain(t, ctx));
-  const agrees = confirmed || (contractRead && (status === "FINALISED") === paid);
-  const finish = status === "FINALISED" ? null : finishStep({ status: t.status, origin: t.origin_chain, dest: t.destination_chain });
+  const confirmed = status === "FINALISED" && !contractRead && (await onChain(t.destination_chain, destinationTx(t), ctx));
   const tx = t.initialised?.transaction_hash;
-  const evidence = tx ? [{ id: `omni:${tx}`, source: t.initialised.chain.toLowerCase(), kind: "tx", ref: tx, observedAt: iso(t.initialised.timestamp_seconds), class: "PROVEN" }] : [];
+  const originProven = await onChain(t.initialised?.chain, tx, ctx);
+  // An unpaid contract proves it hasn't been paid. It says nothing about the steps before that, so those need their own read.
+  const signing = [t.signed].flat().filter(Boolean).at(-1);
+  const stepsProven = originProven && (status !== "SIGNED" || (await onChain(signing?.chain ?? "Near", signing?.transaction_hash, ctx)));
+  const agrees = confirmed || (contractRead && (status === "FINALISED" ? paid : !paid && stepsProven));
+  const finish = status === "FINALISED" ? null : finishStep({ status: t.status, origin: t.origin_chain, dest: t.destination_chain });
+  const evidence = tx ? [{ id: `omni:${tx}`, source: t.initialised.chain.toLowerCase(), kind: "tx", ref: tx, observedAt: iso(t.initialised.timestamp_seconds), class: originProven ? "PROVEN" : "REPORTED" }] : [];
   const dest = destinationTx(t);
   if (confirmed) evidence.push({ id: `omni:${dest}`, source: t.destination_chain.toLowerCase(), kind: "tx", ref: dest, observedAt: t.finalised?.timestamp_seconds ? iso(t.finalised.timestamp_seconds) : ctx.now, class: "PROVEN" });
   evidence.push({ id: `read:omni:${ref}`, source: "omni", kind: "read", ref, observedAt: ctx.now, class: agrees ? "PROVEN" : "REPORTED" });
   const legs = [{
     id: `omni:${ref}`, provider: "omni", ref, status, class: agrees ? "PROVEN" : "REPORTED", custody: status === "FINALISED" ? "recipient" : "omni bridge", evidence: tx ? [`omni:${tx}`] : [],
     ...(finish ? { finish } : {}),
-    facts: { token: t.token_id, amount: t.amount, fee: t.fee, nativeFee: t.native_fee, from: t.origin_chain, to: t.destination_chain },
+    facts: { token: t.token_id, amount: t.amount, fee: t.fee, nativeFee: t.native_fee, from: t.origin_chain, to: t.destination_chain, originProven },
   }];
   if (paid === null) legs.push({ id: `contract:${ref}`, provider: `${t.destination_chain} bridge contract`, status: "LOOKUP_FAILED", class: "UNKNOWN", evidence: [] });
   return { legs, edges: [], evidence, claims: [], identifiers: [ref.toLowerCase(), tx].filter(Boolean), next: [] };

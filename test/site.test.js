@@ -18,3 +18,10 @@ test("every file the page names exists", () => {
 test("each recorded case on the page has a fixture", () => {
   for (const [, name] of html.matchAll(/data-(?:case|open)="([^"]+)"/g)) assert.ok(existsSync(`fixtures/${name}/case.json`), name);
 });
+
+test("the page only offers parties the rules can name", async () => {
+  const { stageView } = await import("../src/stage.js");
+  const board = stageView({ legs: [] }, { journey: "x", nextAction: { party: "none" } }).parties.map((p) => p.key);
+  assert.ok(!board.includes("solver"));
+  assert.doesNotMatch(html, /Solver/);
+});
