@@ -1,7 +1,7 @@
 // The verdict in plain words: who acts next first, then each leg and how sure we are of it.
 import { CLASS_WORDS, PARTY_WORDS } from "./words.js";
 
-const STATUS_WORDS = {
+export const STATUS_WORDS = {
   DEPOSIT_CONFIRMED: "deposit confirmed", DEPOSIT_NOT_FOUND: "no deposit found", CREDITED: "credited", CREDIT_PENDING: "credit pending",
   HELD: "held", PAID_OUT: "paid out", REFUNDED: "refunded", CONTRACT_FORWARDED: "forwarded by a contract",
   INGRESS_CONFIRMED_EGRESS_UNKNOWN: "received, payout unknown", INITIALISED: "started, not finished", SIGNED: "signed, not finished",

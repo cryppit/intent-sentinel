@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- The page may talk only to itself and the public sources the code reads. test/privacy.test.js keeps this list complete. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://1click.chaindefuser.com https://api.adastat.net https://api.avax.network https://api.blockchair.com https://api.blockcypher.com https://api.haskoin.com https://api.koios.rest https://api.mainnet-beta.solana.com https://api.mainnet.abs.xyz https://api.mainnet.aptoslabs.com https://api.trongrid.io https://api.yoroiwallet.com https://api.zan.top https://arb1.arbitrum.io https://arbitrum.blockscout.com https://archival-rpc.mainnet.near.org https://archive.mainnet.aptoslabs.com https://avalanche-c-chain-rpc.publicnode.com https://base.blockscout.com https://berachain-rpc.publicnode.com https://bridge-indexer.chaindefuser.com https://bridge.chaindefuser.com https://bsc-dataseed.bnbchain.org https://bsc-dataseed1.bnbchain.org https://bsc-dataseed2.bnbchain.org https://docs.near-intents.org https://eth.blockscout.com https://ethereum-rpc.publicnode.com https://explorer.optimism.io https://free.rpc.fastnear.com https://gnosisscan.io https://graphql.mainnet.sui.io https://horizon.stellar.lobstr.co https://horizon.stellar.org https://mainnet.api.bridge.nearone.org https://mainnet.base.org https://mainnet.optimism.io https://mempool.space https://polygon-bor-rpc.publicnode.com https://robinhood-rpc.publicnode.com https://rpc-mainnet.matic.quiknode.pro https://rpc.adifoundation.ai https://rpc.berachain.com https://rpc.gnosischain.com https://rpc.hyperliquid.xyz https://rpc.hypurrscan.io https://rpc.intea.rs https://rpc.mainnet.chain.robinhood.com https://rpc.mainnet.fastnear.com https://rpc.mainnet.near.org https://rpc.mevblocker.io https://rpc.monad.xyz https://rpc.plasma.to https://rpc.scroll.io https://rpc.shitzuapes.xyz https://rpc.xlayer.tech https://rpc1.monad.xyz https://s1.ripple.com https://s2.ripple.com https://scroll-rpc.publicnode.com https://starknet-rpc.publicnode.com https://tonapi.io https://toncenter.com https://tx.main.fastnear.com https://xlayerrpc.okx.com https://xrplcluster.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intent Sentinel</title>
+<meta name="description" content="Paste one id from a stuck cross-chain swap. See what each step proves and who has to act next.">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#04061a">
+<style>
+  :root {
+    --deep: #04061a; --panel: #0c1236; --line: rgba(154, 163, 199, 0.2); --ink: #f4f1e8; --mute: #9aa3c7;
+    --lime: #ddf24a; --amber: #ffb547; --red: #ff6b6b; --blue: #8fb4ff; --glass: rgba(10, 15, 48, 0.72);
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: radial-gradient(1100px 600px at 80% -10%, rgba(42, 59, 214, 0.28), transparent 60%), var(--deep); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100%; }
+  a { color: var(--lime); text-underline-offset: 3px; }
+  input:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+  .top { display: flex; align-items: center; gap: 16px; max-width: 880px; margin: 0 auto; padding: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--ink); text-decoration: none; }
+  .brand img { border-radius: 8px; }
+  .gh { margin-left: auto; font-size: 14px; color: var(--mute); }
+  main { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: clamp(32px, 7vw, 52px); line-height: 1.06; letter-spacing: -0.02em; margin: 0 0 14px; }
+  h1 em { font-style: normal; color: var(--lime); }
+  .lede { color: var(--mute); font-size: 18px; margin: 0 0 26px; max-width: 62ch; }
+  form { display: flex; gap: 10px; flex-wrap: wrap; }
+  input { flex: 1 1 280px; min-width: 0; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass); color: var(--ink); font: 15px var(--mono); }
+  button { cursor: pointer; font: inherit; }
+  .go { padding: 14px 22px; border: 0; border-radius: 12px; background: var(--lime); color: #04061a; font-weight: 750; }
+  .tries { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0 0; padding: 0; list-style: none; color: var(--mute); font-size: 14px; }
+  .tries button, .ghost { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 14px; }
+  .tries button:hover, .ghost:hover { border-color: var(--lime); }
+  #out { margin-top: 34px; scroll-margin-top: 12px; }
+  .verdict { padding: 22px; border-radius: 16px; border: 1px solid var(--line); background: var(--glass); border-left-width: 5px; }
+  .verdict.act { border-left-color: var(--amber); }
+  .verdict.done { border-left-color: var(--lime); }
+  .verdict.unknown { border-left-color: var(--red); }
+  .eyebrow { margin: 0 0 6px; color: var(--mute); font: 600 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+  .verdict h2 { margin: 0; font-size: clamp(23px, 5vw, 32px); line-height: 1.15; letter-spacing: -0.01em; }
+  .question { margin: 10px 0 0; font-size: 17px; }
+  .note { margin: 10px 0 0; color: var(--mute); font-size: 14px; }
+  h3 { margin: 28px 0 10px; font-size: 16px; }
+  .legs, .proof { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .legs li { display: grid; grid-template-columns: minmax(0, 9em) minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(4, 6, 26, 0.5); }
+  .legs li.failed { border-color: var(--red); }
+  .who { color: var(--mute); font: 13px var(--mono); overflow-wrap: anywhere; }
+  .cls { font: 600 12px var(--mono); padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .c-proven { color: var(--lime); } .c-reported { color: var(--blue); } .c-inferred { color: var(--amber); } .c-unknown, .c-not_visible { color: var(--mute); }
+  .proof li { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 13px var(--mono); color: var(--mute); }
+  .ghost { margin-top: 22px; }
+  .hash { margin: 12px 0 0; color: var(--mute); font: 12px var(--mono); overflow-wrap: anywhere; }
+  .reading { color: var(--mute); }
+  .error { color: var(--red); }
+  .about { margin-top: 48px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--mute); font-size: 15px; }
+  .about h2 { font-size: 17px; color: var(--ink); margin: 0 0 8px; }
+  .about ul { padding-left: 18px; margin: 0 0 16px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  @media (max-width: 520px) { .legs li { grid-template-columns: minmax(0, 1fr) auto; } .legs .who { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<nav class="top">
+  <a class="brand" href="./"><img src="icons/favicon.svg" alt="" width="28" height="28"><span>Intent Sentinel</span></a>
+  <a class="gh" href="https://github.com/cryppit/intent-sentinel">GitHub</a>
+</nav>
+<main>
+  <h1>Your swap is stuck. <em>Who acts next?</em></h1>
+  <p class="lede">Paste one id from a cross-chain swap. See what each step proves, and who has to move. It reads public chains from your browser. It holds no keys and signs nothing.</p>
+  <form id="form">
+    <input id="id" autocomplete="off" spellcheck="false" aria-label="Transaction hash, address or Omni transfer id" placeholder="NEAR or EVM hash, Solana signature, or Near:563760" required>
+    <button class="go">Open case</button>
+  </form>
+  <ul class="tries">
+    <li>Recorded cases:</li>
+    <li><button type="button" data-case="omni-665">0.02 ETH, fee 0</button></li>
+    <li><button type="button" data-case="omni-666">Solana transfer the indexer never saw</button></li>
+    <li><button type="button" data-case="refund-5btc">5 BTC refunded</button></li>
+  </ul>
+  <div id="out" aria-live="polite"></div>
+  <section class="about">
+    <h2>How to read a case</h2>
+    <ul>
+      <li><b>Proven:</b> a chain transaction, receipt or contract view shows it.</li>
+      <li><b>Reported:</b> a provider said so. It isn't proof.</li>
+      <li><b>Inferred:</b> the facts line up, but nothing proves the link.</li>
+      <li><b>Not visible:</b> a confidential step only its owner can read.</li>
+    </ul>
+    <h2>What it won't do</h2>
+    <ul>
+      <li>It never moves funds or asks for a key. If someone offers to recover funds by DM, it's a scam.</li>
+      <li>It names who acts next, not who is to blame.</li>
+      <li>The same evidence always gives the same verdict, so anyone can check it.</li>
+    </ul>
+    <p>Built by <a href="https://github.com/cryppit">Cryppit</a> at NEAR HACKATHON.</p>
+  </section>
+</main>
+<script type="module" src="src/page.js"></script>
+</body>
+</html>
