@@ -158,7 +158,7 @@ function caseFile({ caseData, verdict }, view, stageData, note) {
   for (const t of packet.timeline) {
     const url = explorerUrl(t.source, t.ref);
     const ref = url ? el("a", { href: url, target: "_blank", rel: "noreferrer" }, shortRef(t.ref)) : el("span", {}, shortRef(t.ref));
-    proof.append(el("li", {}, el("time", {}, `${t.at.slice(0, 16).replace("T", " ")} UTC`), el("span", { class: "who" }, placeName(t.source)), ref));
+    proof.append(el("li", {}, el("time", {}, t.at ? `${t.at.slice(0, 16).replace("T", " ")} UTC` : "No chain time"), el("span", { class: "who" }, placeName(t.source)), ref));
   }
 
   const left = el("div", { class: "card" }, el("h3", {}, "What each step proves"), steps);

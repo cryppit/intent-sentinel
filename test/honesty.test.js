@@ -194,3 +194,44 @@ test("the tracer sees a failure if a node failed and none had the answer", async
   const f = withSolanaFallback(async (url) => (url === SOLANA_RPCS[0] ? json({}, 503) : json({ result: null })));
   assert.equal((await f(SOLANA_RPCS[0], {})).status, 503);
 });
+
+for (const [origin, payout, status] of [["eth:1", "eth", "REFUNDED"], ["eth:8453", "base", "REFUNDED"], ["eth:42161", "arb", "REFUNDED"], ["bnb", "bsc", "REFUNDED"], ["zcash:mainnet", "zec", "REFUNDED"], ["eth:1", "base", "PAID_OUT"], ["eth:8453", "eth", "PAID_OUT"]]) {
+  test(`no-swap withdrawal from ${origin} to ${payout} reads ${status}`, () => assert.equal(traceToLegs(noSwapReport(origin, payout), AT).legs.at(-1).status, status));
+}
+
+test("with no proven origin, a no-swap withdrawal isn't called a refund", () => {
+  const report = { ...noSwapReport("eth:1", "base"), origin: { status: "missing" } };
+  assert.equal(traceToLegs(report, AT).legs.at(-1).status, "PAID_OUT");
+});
+
+test("a Base deposit is Base, not Ethereum", () => assert.equal(traceToLegs(noSwapReport("eth:8453", "base"), AT).legs[0].provider, "base"));
+test("an EVM chain we don't know isn't called Ethereum", () => assert.notEqual(traceToLegs(noSwapReport("eth:999999", "base"), AT).legs[0].provider, "eth"));
+
+const packetOf = async () => {
+  const c = caseWith([leg("sol", "PAID_OUT")]);
+  c.evidence.push(tx("REAL"));
+  return buildPacket(c, await buildVerdict(c));
+};
+
+for (const [name, edit] of [
+  ["an extra field on an evidence item", (p) => (p.evidence[0].note = "trust me")],
+  ["an edited evidence id", (p) => (p.evidence[0].id = "other")],
+  ["an injected reported item", (p) => p.evidence.push({ id: "x", source: "near", kind: "tx", ref: "X", observedAt: AT, class: "REPORTED" })],
+  ["an injected read item", (p) => p.evidence.push({ id: "x", source: "near", kind: "read", ref: "X", observedAt: AT, class: "PROVEN" })],
+]) {
+  test(`${name} fails the packet check`, async () => {
+    const p = await packetOf();
+    edit(p);
+    assert.equal(await verifyPacket(p), false);
+  });
+}
+
+test("a proof with no chain time carries no date, so none can be edited in", async () => {
+  const c = caseWith([leg("btc", "PAID_OUT")]);
+  c.evidence.push({ ...tx("OUT", AT), undated: true });
+  const p = buildPacket(c, await buildVerdict(c));
+  const item = p.timeline.find((t) => t.ref === "OUT");
+  assert.equal(item.at, null);
+  p.evidence.find((e) => e.ref === "OUT").observedAt = BEFORE;
+  assert.equal(await verifyPacket(p), false);
+});

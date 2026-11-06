@@ -6,7 +6,7 @@ import { SCHEMA, RULES_VERSION } from "./schema.js";
 
 /** The proven chain records a case rests on. Read times are left out, so reading an unchanged case again matches. */
 export const evidenceHash = (evidence) =>
-  sha256Hex(canonicalJson(evidence.filter((e) => e.class === "PROVEN" && e.kind !== "read").map(({ source, kind, ref, observedAt, undated }) => ({ source, kind, ref, ...(undated ? {} : { observedAt }) })).sort((a, b) => (canonicalJson(a) < canonicalJson(b) ? -1 : 1))));
+  sha256Hex(canonicalJson(evidence.filter((e) => e.class === "PROVEN" && e.kind !== "read").map(({ id, source, kind, ref, observedAt, undated }) => ({ id, source, kind, ref, ...(undated ? {} : { observedAt }) })).sort((a, b) => (canonicalJson(a) < canonicalJson(b) ? -1 : 1))));
 
 const latest = (times) => times.reduce((a, b) => (a === null || Date.parse(b) > Date.parse(a) ? b : a), null);
 

@@ -6,7 +6,15 @@ import { failedRead } from "../net.js";
 import { SOLANA_RPCS, withSolanaFallback } from "./solana.js";
 
 const iso = (ns) => (ns == null ? null : new Date(Number(BigInt(ns) / 1_000_000n)).toISOString());
-const short = (chain) => String(chain ?? "near").split(":")[0];
+// The tracer writes chains several ways: eth:8453 is Base, bnb is bsc, zcash:mainnet is zec. An EVM id we don't know keeps
+// its id, so it's never called Ethereum.
+const EVM_IDS = { 1: "eth", 8453: "base", 42161: "arb", 100: "gnosis", 9745: "plasma", 80094: "bera", 56: "bsc", 10: "op", 137: "pol", 43114: "avax" };
+const CHAIN_ALIAS = { bnb: "bsc", zcash: "zec", strk: "starknet" };
+const short = (chain) => {
+  const [network, id] = String(chain ?? "near").toLowerCase().split(":");
+  if (network === "eth" && id) return EVM_IDS[id] ?? `eth:${id}`;
+  return CHAIN_ALIAS[network] ?? network;
+};
 const PROVEN_PAYOUT = ["proven", "confirmed", "recorded"];
 const SOURCE_TIMEOUT_MS = 12_000;
 const CASE_TIMEOUT_MS = 45_000;
@@ -57,10 +65,9 @@ function ledgerBalance(report) {
 }
 
 function endLeg({ w, payout }, report, at) {
-  // The tracer's "refunded" means the deposited token left without a swap. Leaving on another chain isn't going back.
-  const from = report.origin?.chain;
-  const elsewhere = from && payout.chain && short(from) !== short(payout.chain);
-  const isRefund = w?.excessRefund || (report.verdict === "refunded" && !elsewhere);
+  // The tracer's "refunded" means the deposited token left without a swap. It's only a refund if it went back where it came from.
+  const backHome = report.origin?.status === "proven" && payout.chain && short(report.origin.chain) === short(payout.chain);
+  const isRefund = w?.excessRefund || (report.verdict === "refunded" && backHome);
   const id = `end:${w?.tx ?? "order"}`;
   if (payout.status !== "arrived") return { id, provider: short(payout.chain ?? w?.chain), ref: w?.tx, status: "PAYOUT_UNSEEN", class: "UNKNOWN", custody: "unknown", at };
   return { id, provider: short(payout.chain), ref: payout.tx ?? w?.tx, amount: payout.amount ?? undefined, class: classOf(payout), at, status: isRefund ? "REFUNDED" : "PAID_OUT", custody: isRefund ? "refund address" : "recipient" };
