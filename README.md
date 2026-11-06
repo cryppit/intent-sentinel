@@ -125,11 +125,23 @@ Every fact has an evidence class:
 - A failed lookup is reported as that. It never reads as success.
 - It names who acts next, not who is to blame.
 
+## The pin contract
+
+`anchor/contract/` is the Rust contract a daily root is pinned to. It uses no near-sdk, it only accepts closed UTC days, and only its own account can pin. To check a deployed copy against this source:
+
+```sh
+cd anchor/contract
+cargo test
+./build.sh --check
+```
+
+`build.sh` prints the `code_hash`, which should match the code hash NEAR reports for the account. It needs the toolchain in `rust-toolchain.toml`. For this build the hash is `3QSdwkCACfL4aUB86WubohbgXNGhQgVa9whBu7dmGADx`. No day has been pinned yet.
+
 ## What existed before, and what is new
 
 Per NEAR HACKATHON Q-002, Q-003 and Q-005:
 
-- **Existing, declared baseline:** `vendor/wms-core.mjs`, the order tracer from [Where's My Swap](https://github.com/cryppit/wheres-my-swap) at `76cac26` (MIT). The Merkle tree design and the pin contract's arguments come from Cryppit's earlier NEAR anchor work.
+- **Existing, declared baseline:** `vendor/wms-core.mjs`, the order tracer from [Where's My Swap](https://github.com/cryppit/wheres-my-swap) at `76cac26` (MIT). `anchor/contract/`, the pin contract, written 3 to 14 Oct 2026 for Cryppit's earlier NEAR anchor work, and now published under MIT. In this repo its source metadata points here and it has been rebuilt, with no change to its rules. The Merkle tree design comes from the same work.
 - **New in this repo:** everything else, including the identifiers, evidence model, rules, verdict and hash, adapters, case builder, evidence packet, daily root, CLI, page and recorded cases.
 
 AI coding tools were used to build it, under the founder's direction.

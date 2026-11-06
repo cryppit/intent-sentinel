@@ -5,3 +5,5 @@
 `logos/` holds chain logos from [@web3icons/core](https://github.com/0xa3k5/web3icons), MIT. See `logos/LICENSE`.
 
 `art/net.jpg` is Cryppit's own art, also used on Safe to Send.
+
+`anchor/contract/` is Cryppit's own NEAR anchor contract, written 3 to 14 Oct 2026, before this project, and published here under MIT. It counts as baseline (NEAR HACKATHON Q-002, Q-005). Its Rust dependencies are in `anchor/contract/Cargo.lock`.

@@ -1,0 +1,23 @@
+[package]
+name = "station-anchor"
+version = "1.2.0"
+edition = "2021"
+description = "Pins a daily head hash and Merkle root on NEAR (no near-sdk; wasm32v1-none)"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "=1.0.228", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "=1.0.149", default-features = false, features = ["alloc"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = false
+strip = true
+overflow-checks = true
