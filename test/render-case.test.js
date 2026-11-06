@@ -38,3 +38,8 @@ test("a warning reaches the page", async () => {
   c.warnings = [{ kind: "locked", party: "near-intents", detail: "locked by operators" }];
   assert.deepEqual(caseView(await buildVerdict(c)).warnings, ["locked by operators"]);
 });
+
+test("what to ask for reaches the page", () => {
+  const v = caseView({ journey: "GATED_FINISH", nextAction: { party: "omni-relayer", question: "q", evidenceToAsk: ["whether this transfer will be processed"] }, legs: [], claims: [], conservation: [], warnings: [] });
+  assert.deepEqual(v.ask, ["whether this transfer will be processed"]);
+});

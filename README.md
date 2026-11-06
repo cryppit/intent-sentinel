@@ -71,6 +71,7 @@ You should see the same answer as step 2, unless the transfer has moved since. R
 
 ```sh
 npm test
+node scripts/check-page.mjs --live   # real Chrome, with the page served on port 5079
 ```
 
 All tests should pass, with no network.
@@ -119,7 +120,7 @@ Every fact has an evidence class:
 - It covers NEAR Intents orders and Omni transfers. It doesn't yet trace Chainflip's payout side, so such a leg stays unknown.
 - A confidential leg is never guessed at, and private halves are never paired by amount or time.
 - 1Click status is a claim, held in memory only. For a deposit address it also finds the NEAR order, and the case then rests on what the chain shows. Only the claim's category and the time it was seen are kept, so no 1Click reply is stored.
-- Solana signatures work in the CLI. The public Solana RPC refuses browsers, so the page reports that source as unreadable.
+- Solana reads try two browser-friendly public endpoints first, then `api.mainnet-beta`, which refuses web pages. An empty answer only counts as missing if every endpoint answered.
 - Amounts are checked on the NEAR ledger only, and only with no swap. Otherwise the case says they weren't checked.
 - A failed lookup is reported as that. It never reads as success.
 - It names who acts next, not who is to blame.

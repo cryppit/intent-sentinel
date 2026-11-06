@@ -19,6 +19,7 @@ export function caseView(verdict) {
   return {
     headline: headline(verdict),
     question: verdict.nextAction.question,
+    ask: verdict.nextAction.evidenceToAsk ?? [],
     party: verdict.nextAction.party,
     tone: toneOf(verdict),
     legs: verdict.legs.map((l) => ({

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { finishStep, readTransfer } from "../src/adapters/omni.js";
+import { readFileSync } from "node:fs";
+import { SOLANA_RPCS, solanaTransaction } from "../src/adapters/solana.js";
 
 const NOW = "2026-11-06T00:00:00Z";
 const SIG = "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5";
@@ -92,3 +94,34 @@ test("a finish whose transaction can't be read stays reported", async () =>
   assert.equal((await readTransfer("near:7", ctxFor({ transfer: settled("Sol") }))).legs[0].class, "REPORTED"));
 test("a failed destination transaction doesn't prove a finish", async () =>
   assert.equal((await readTransfer("near:7", ctxFor({ transfer: settled("Sol"), solana: solanaTx([], { InstructionError: [0, "x"] }) }))).legs[0].class, "REPORTED"));
+
+const rpcCtx = (answers) => {
+  const asked = [];
+  return { asked, now: NOW, fetch: async (url) => {
+    asked.push(String(url));
+    const a = answers[SOLANA_RPCS.indexOf(String(url))];
+    return a === "refused" ? res({ error: "Access forbidden" }, 403) : res({ result: a });
+  } };
+};
+
+test("a Solana read moves past an endpoint that refuses it", async () => {
+  const ctx = rpcCtx(["refused", { slot: 1 }, null]);
+  assert.deepEqual(await solanaTransaction("SIG", ctx), { slot: 1 });
+  assert.equal(new Set(ctx.asked).size, 2);
+});
+
+test("a Solana read moves past a node that has dropped an old transaction", async () => {
+  const ctx = rpcCtx([null, { slot: 1 }, null]);
+  assert.deepEqual(await solanaTransaction("SIG", ctx), { slot: 1 });
+});
+
+test("a transaction every Solana endpoint says is missing is missing", async () =>
+  assert.equal(await solanaTransaction("SIG", rpcCtx([null, null, null])), null));
+
+test("a Solana endpoint that refused means absence isn't proven", async () =>
+  assert.rejects(solanaTransaction("SIG", rpcCtx([null, null, "refused"]))));
+
+test("the page may reach every Solana endpoint", () => {
+  const html = readFileSync("index.html", "utf8");
+  for (const url of SOLANA_RPCS) assert.ok(html.includes(url), url);
+});

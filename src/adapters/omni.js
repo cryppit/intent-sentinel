@@ -3,9 +3,9 @@
 // on an EVM chain checks the MPC signature and pays only the signed recipient, so anyone may send it.
 import { publicPayoutClient } from "../../vendor/wms-core.mjs";
 import { failedRead, getJson, postJson } from "../net.js";
+import { solanaTransaction } from "./solana.js";
 
 const TRANSFERS = "https://mainnet.api.bridge.nearone.org/api/v4/transfers/transfer";
-const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
 const MEMPOOL = "https://mempool.space/api";
 const FASTNEAR_TX = "https://tx.main.fastnear.com/v0/transactions";
 const SOLANA_BRIDGE = "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe";
@@ -41,8 +41,8 @@ async function confirmedOnChain(t, ctx) {
   if (!tx) return false;
   try {
     if (t.destination_chain === "Sol") {
-      const r = await postJson(SOLANA_RPC, { jsonrpc: "2.0", id: 1, method: "getTransaction", params: [tx, { encoding: "json", maxSupportedTransactionVersion: 0 }] }, ctx);
-      return Boolean(r.result) && r.result.meta?.err === null;
+      const found = await solanaTransaction(tx, ctx);
+      return Boolean(found) && found.meta?.err === null;
     }
     if (t.destination_chain === "Btc") return (await getJson(`${MEMPOOL}/tx/${tx}/status`, ctx)).confirmed === true;
     if (t.destination_chain === "Near") return Boolean((await postJson(FASTNEAR_TX, { tx_hashes: [tx] }, ctx)).transactions?.length);
@@ -76,8 +76,7 @@ async function transferToCase(t, ctx) {
 }
 
 async function solanaCase(sig, ctx) {
-  const r = await postJson(SOLANA_RPC, { jsonrpc: "2.0", id: 1, method: "getTransaction", params: [sig, { encoding: "json", maxSupportedTransactionVersion: 0 }] }, ctx);
-  const tx = r.result;
+  const tx = await solanaTransaction(sig, ctx);
   const logs = tx?.meta?.logMessages ?? [];
   const bridged = logs.some((l) => l.includes(`${SOLANA_BRIDGE} invoke`)) && logs.some((l) => l.includes("Instruction: InitTransfer"));
   if (!tx || tx.meta.err || !bridged) return { notFound: "No Omni transfer is known for that transaction." };

@@ -9,7 +9,7 @@ export const STATUS_WORDS = {
   PAYOUT_UNSEEN: "payout not found", NOT_PROVEN: "claimed, not proven",
 };
 
-export const balanceWords = (x) => `amounts on ${x.leg}: ${x.ok === null ? `not checked (${x.reason})` : x.ok ? "balance" : "do not balance"}`;
+export const balanceWords = (x) => (x.ok === null ? `amounts on ${x.leg} not checked (${x.reason})` : `amounts in and out ${x.ok ? "balance" : "do not balance"} on ${x.leg}`);
 
 export function headline(verdict) {
   const { party } = verdict.nextAction;

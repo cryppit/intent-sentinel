@@ -3,6 +3,7 @@
 // changes the token. Where it can't be checked, the case says so rather than staying silent.
 import { checkOrderWithFallback, EVM_RPC, fastnearClient, fastnearUnavailable, payingWithdrawal, publicOriginClient, publicPayoutClient, searchPayout } from "../../vendor/wms-core.mjs";
 import { failedRead } from "../net.js";
+import { SOLANA_RPCS } from "./solana.js";
 
 const iso = (ns) => (ns == null ? null : new Date(Number(BigInt(ns) / 1_000_000n)).toISOString());
 const short = (chain) => String(chain ?? "near").split(":")[0];
@@ -102,7 +103,7 @@ const timed = (f) => (url, init = {}) => f(url, { ...init, signal: init.signal ?
 async function liveCheck(raw, ctx) {
   const f = timed(ctx.fetch ?? fetch);
   const nowNs = BigInt(Date.parse(ctx.now)) * 1_000_000n;
-  const payouts = publicPayoutClient(f);
+  const payouts = publicPayoutClient(f, { solanaRpc: SOLANA_RPCS[0] });
   const report = await checkOrderWithFallback(raw, fastnearClient(f), nowNs, undefined, payouts, publicOriginClient(f));
   const paying = payingWithdrawal(report);
   const others = report.withdrawals.filter((w) => w !== paying && !(w.returned || w.refused || w.bounced));

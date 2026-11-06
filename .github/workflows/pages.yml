@@ -21,7 +21,7 @@ jobs:
       - run: npm test
       - run: |
           mkdir -p _site
-          cp -r index.html src vendor fixtures icons _site/
+          cp -r index.html og.png src vendor fixtures icons logos art _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
