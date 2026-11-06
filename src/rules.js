@@ -1,11 +1,12 @@
 // Rules v1 (spec section 6). They run in this order; each may set the journey and the next party. Pure: no clock, no
 // network. `at` is the verdict's time. A soft rule only fills in a next party when nothing is left open.
 import { PARTIES } from "./schema.js";
+import { PARTY_WORDS, shortRef } from "./words.js";
 
 const when = (s) => Date.parse(s);
 const isProven = (leg) => leg.class === "PROVEN";
 const named = (p) => (PARTIES.includes(p) ? p : "unknown");
-const refOf = (leg) => leg.ref ?? leg.provider;
+const refOf = (leg) => shortRef(leg.ref ?? leg.provider);
 const settled = (c) => c.legs.some((l) => isProven(l) && (l.status === "PAID_OUT" || l.status === "REFUNDED"));
 const leg = (c, test) => c.legs.find(test) ?? null;
 
@@ -94,7 +95,7 @@ const RULES = [
     code: "GATED_FINISH",
     fires: (c) => leg(c, (l) => l.finish && l.finish.by !== "anyone"),
     party: (c, l) => named(l.finish.by),
-    question: (c, l) => `Only ${l.finish.by} can run ${l.finish.step}. Will it run for ${refOf(l)}?`,
+    question: (c, l) => `Only ${PARTY_WORDS[l.finish.by] ?? l.finish.by} can run ${l.finish.step}. Will it run for ${refOf(l)}?`,
     ask: () => ["whether this transfer will be processed"],
   },
   {

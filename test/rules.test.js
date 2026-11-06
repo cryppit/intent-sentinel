@@ -77,3 +77,13 @@ test("two legs paid and part refunded both appear", () => {
 });
 test("a party outside the vocabulary becomes unknown", () =>
   assert.equal(evaluate(caseWith([{ provider: "hyperliquid", status: "INGRESS_CONFIRMED_EGRESS_UNKNOWN" }]), AT).nextAction.party, "unknown"));
+test("a question names the party in plain words", () => {
+  const r = evaluate(caseWith([{ provider: "omni", status: "INITIALISED", ref: "Near:7", finish: { step: "sign_transfer", by: "omni-relayer" } }]), AT);
+  assert.match(r.nextAction.question, /^Only an Omni relayer can run/);
+});
+test("a long hash is shortened in a question", () => {
+  const ref = "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5";
+  const r = evaluate(caseWith([{ provider: "omni", status: "INITIALISED", ref, finish: { step: "fin_transfer", by: "omni-relayer" } }]), AT);
+  assert.ok(r.nextAction.question.includes("3hd4Kz…ppE5"));
+  assert.ok(!r.nextAction.question.includes(ref));
+});
