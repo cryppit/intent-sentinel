@@ -1,0 +1,31 @@
+{
+  "schema": "intent-delivery-verdict/1",
+  "incident": "iv1_79cd091de6ae02448089b2f0c5cafe0324bdf04f7c64ef377cb9903bc1f8cb17",
+  "computedAt": "2026-11-06T04:56:45.704Z",
+  "rulesVersion": "1.0.0",
+  "journey": "GATED_FINISH",
+  "nextAction": {
+    "party": "omni-relayer",
+    "question": "Only an Omni relayer can run sign_transfer. Will it run for Near:563760?",
+    "evidenceToAsk": [
+      "whether this transfer will be processed"
+    ]
+  },
+  "legs": [
+    {
+      "provider": "omni",
+      "status": "INITIALISED",
+      "class": "PROVEN",
+      "custody": "omni bridge"
+    }
+  ],
+  "findings": [
+    "GATED_FINISH"
+  ],
+  "findingClasses": {
+    "GATED_FINISH": "PROVEN"
+  },
+  "conservation": [],
+  "claims": [],
+  "outputHash": "651f58adfdf9a655f83fe47ce6cba4e13ae57992f799214d80183521d4f907c9"
+}

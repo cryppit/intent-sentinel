@@ -1,0 +1,51 @@
+{
+  "identifiers": [
+    "9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR",
+    "near:563760"
+  ],
+  "legs": [
+    {
+      "id": "omni:Near:563760",
+      "provider": "omni",
+      "ref": "Near:563760",
+      "status": "INITIALISED",
+      "class": "PROVEN",
+      "custody": "omni bridge",
+      "evidence": [
+        "omni:9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR"
+      ],
+      "finish": {
+        "step": "sign_transfer",
+        "by": "omni-relayer"
+      },
+      "facts": {
+        "token": "near:eth.bridge.near",
+        "amount": "20000000000000000",
+        "fee": "0",
+        "nativeFee": "28243989228000",
+        "from": "Near",
+        "to": "Eth"
+      }
+    }
+  ],
+  "edges": [],
+  "evidence": [
+    {
+      "id": "omni:9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR",
+      "source": "near",
+      "kind": "tx",
+      "ref": "9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR",
+      "observedAt": "2026-09-28T10:16:23.000Z",
+      "class": "PROVEN"
+    },
+    {
+      "id": "read:omni:Near:563760",
+      "source": "omni",
+      "kind": "read",
+      "ref": "Near:563760",
+      "observedAt": "2026-11-06T04:56:45.704Z",
+      "class": "PROVEN"
+    }
+  ],
+  "claims": []
+}

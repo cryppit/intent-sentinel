@@ -1,0 +1,63 @@
+{
+  "identifiers": [
+    "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5"
+  ],
+  "legs": [
+    {
+      "id": "sol:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "provider": "sol",
+      "ref": "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "status": "DEPOSIT_CONFIRMED",
+      "class": "PROVEN",
+      "custody": "omni bridge",
+      "evidence": [
+        "sol:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5"
+      ],
+      "facts": {
+        "slot": 453357350
+      }
+    },
+    {
+      "id": "omni:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "provider": "omni",
+      "ref": "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "status": "INITIALISED",
+      "class": "INFERRED",
+      "custody": "omni bridge",
+      "evidence": [],
+      "finish": {
+        "step": "fin_transfer",
+        "by": "omni-relayer"
+      },
+      "facts": {
+        "indexerRecord": "none"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "sol:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "to": "omni:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "kind": "bridged-as"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "sol:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "source": "sol",
+      "kind": "tx",
+      "ref": "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "observedAt": "2026-10-04T19:59:19.000Z",
+      "class": "PROVEN"
+    },
+    {
+      "id": "read:omni:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "source": "omni",
+      "kind": "read",
+      "ref": "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "observedAt": "2026-11-06T04:56:46.371Z",
+      "class": "PROVEN"
+    }
+  ],
+  "claims": []
+}

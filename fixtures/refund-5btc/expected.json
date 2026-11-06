@@ -1,0 +1,50 @@
+{
+  "schema": "intent-delivery-verdict/1",
+  "incident": "iv1_902fc348bc2fc6fb53ff73f6ba6c933461ae135789522981eeba2ccba178d91e",
+  "computedAt": "2026-11-06T04:56:48.508Z",
+  "rulesVersion": "1.0.0",
+  "journey": "REFUNDED",
+  "nextAction": {
+    "party": "none",
+    "question": null,
+    "evidenceToAsk": []
+  },
+  "legs": [
+    {
+      "provider": "btc",
+      "status": "DEPOSIT_CONFIRMED",
+      "class": "PROVEN",
+      "custody": "bridge"
+    },
+    {
+      "provider": "near-intents",
+      "status": "CREDITED",
+      "class": "PROVEN",
+      "custody": "intents.near"
+    },
+    {
+      "provider": "btc",
+      "status": "REFUNDED",
+      "class": "PROVEN",
+      "custody": "refund address"
+    }
+  ],
+  "findings": [
+    "REFUNDED"
+  ],
+  "findingClasses": {
+    "REFUNDED": "PROVEN"
+  },
+  "conservation": [
+    {
+      "leg": "credit",
+      "in": "500014578",
+      "out": [
+        "500014578"
+      ],
+      "ok": true
+    }
+  ],
+  "claims": [],
+  "outputHash": "149815b927b112a0e89dfd5b1cffa4923b902b9474ba383c9a742218c0b64785"
+}

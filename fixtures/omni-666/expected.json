@@ -1,0 +1,37 @@
+{
+  "schema": "intent-delivery-verdict/1",
+  "incident": "iv1_04789aece479de10cdf46ae6687c2dfd255e905ed2c27fda9b723796e9de55e0",
+  "computedAt": "2026-11-06T04:56:46.371Z",
+  "rulesVersion": "1.0.0",
+  "journey": "GATED_FINISH",
+  "nextAction": {
+    "party": "omni-relayer",
+    "question": "Only an Omni relayer can run fin_transfer. Will it run for 3hd4Kz…ppE5?",
+    "evidenceToAsk": [
+      "whether this transfer will be processed"
+    ]
+  },
+  "legs": [
+    {
+      "provider": "sol",
+      "status": "DEPOSIT_CONFIRMED",
+      "class": "PROVEN",
+      "custody": "omni bridge"
+    },
+    {
+      "provider": "omni",
+      "status": "INITIALISED",
+      "class": "INFERRED",
+      "custody": "omni bridge"
+    }
+  ],
+  "findings": [
+    "GATED_FINISH"
+  ],
+  "findingClasses": {
+    "GATED_FINISH": "INFERRED"
+  },
+  "conservation": [],
+  "claims": [],
+  "outputHash": "50a4113c60490a92a82a6552bcc736c66ad429164b61e42bdc206290b3bb1359"
+}

@@ -1,0 +1,85 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { openCase } from "../src/case.js";
+
+const NOW = "2026-11-06T00:00:00Z";
+const NEAR_TX = "9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR";
+const NEAR_TX_2 = "3yZe7dPmQ2xVwKhJ9tN4sLbRf6GuCa8EoT1WiXnYqM5k";
+const ADDRESS = "0x" + "a".repeat(40);
+const HASH = "0x" + "b".repeat(64);
+const SHARED = ["order.near", NEAR_TX, NEAR_TX_2];
+const evidence = [{ id: "e", source: "t", kind: "read", ref: "r", observedAt: NOW, class: "PROVEN" }];
+const paid = (next = []) => ({ legs: [{ id: "p", provider: "eth", ref: HASH, status: "PAID_OUT", class: "PROVEN", evidence: [] }], edges: [], evidence, claims: [], identifiers: SHARED, next });
+const stub = (over) => ({ now: NOW, adapters: { order: async () => paid(), transfer: async () => ({ notFound: "no" }), evmTx: async () => paid(), claim: async () => null, ...over } });
+
+test("following a payout adds its facts to the same leg", async () => {
+  const ctx = stub({
+    order: async () => paid([{ kind: "evm-tx", chain: "eth", value: HASH }]),
+    evmTx: async () => ({ legs: [{ id: "x", provider: "eth", ref: HASH, status: "PAID_OUT", class: "PROVEN", evidence: [], facts: { recipientIsContract: true } }], edges: [], evidence: [], claims: [], identifiers: [HASH], next: [] }),
+  });
+  const { caseData, verdict } = await openCase(NEAR_TX, ctx);
+  assert.equal(caseData.legs.length, 1);
+  assert.equal(caseData.legs[0].facts.recipientIsContract, true);
+  assert.ok(verdict.findings.includes("RECIPIENT_IS_CONTRACT"));
+});
+test("following links reaches every leg once, even with a loop", async () => {
+  let calls = 0;
+  const loop = { kind: "evm-tx", chain: "eth", value: HASH };
+  const ctx = stub({
+    order: async () => paid([loop]),
+    evmTx: async () => { calls += 1; return { ...paid([loop]), legs: [{ id: "f", provider: "eth", ref: "other", status: "CONTRACT_FORWARDED", class: "PROVEN", evidence: [] }] }; },
+  });
+  assert.equal((await openCase(NEAR_TX, ctx)).caseData.legs.length, 2);
+  assert.equal(calls, 1);
+});
+test("a chain of links stops at eight hops", async () => {
+  let n = 0;
+  const ctx = stub({
+    order: async () => paid([{ kind: "evm-tx", chain: "eth", value: "0x0" }]),
+    evmTx: async () => { n += 1; return { ...paid([{ kind: "evm-tx", chain: "eth", value: `0x${n}` }]), legs: [] }; },
+  });
+  await openCase(NEAR_TX, ctx);
+  assert.equal(n, 8);
+});
+test("any identifier of a case gives the same incident", async () => {
+  const a = await openCase(NEAR_TX, stub());
+  const b = await openCase(NEAR_TX_2, stub());
+  assert.equal(a.verdict.incident, b.verdict.incident);
+});
+test("one dead source gives INSUFFICIENT_EVIDENCE and names it", async () => {
+  const dead = { legs: [{ id: "f", provider: "eth", ref: HASH, status: "LOOKUP_FAILED", class: "UNKNOWN", evidence: [] }], edges: [], evidence: [], claims: [], identifiers: [], next: [] };
+  const { verdict } = await openCase(NEAR_TX, stub({ order: async () => paid([{ kind: "evm-tx", chain: "eth", value: HASH }]), evmTx: async () => dead }));
+  assert.equal(verdict.journey, "INSUFFICIENT_EVIDENCE");
+  assert.ok(verdict.legs.some((l) => l.status === "LOOKUP_FAILED"));
+});
+test("a transaction the tracer doesn't know is tried on Omni", async () => {
+  const omni = { legs: [{ id: "o", provider: "omni", status: "INITIALISED", class: "PROVEN", evidence: [], finish: { step: "sign_transfer", by: "omni-relayer" } }], edges: [], evidence, claims: [], identifiers: ["near:7"], next: [] };
+  const { verdict } = await openCase(NEAR_TX, stub({ order: async () => ({ notFound: "no" }), transfer: async () => omni }));
+  assert.equal(verdict.journey, "GATED_FINISH");
+});
+test("an Omni id goes straight to Omni", async () => {
+  let asked = null;
+  await openCase("Near:7", stub({ transfer: async (id) => { asked = id; return paid(); } }));
+  assert.equal(asked, "near:7");
+});
+test("an address with no order is a plain error", async () =>
+  assert.match((await openCase(ADDRESS, stub({ order: async () => ({ notFound: "nothing here" }) }))).error, /nothing here|No order/));
+test("nonsense never reaches an adapter", async () => {
+  let called = false;
+  const r = await openCase("hello there", stub({ order: async () => { called = true; return paid(); } }));
+  assert.ok(r.error);
+  assert.equal(called, false);
+});
+test("a deposit address also collects the 1Click claim", async () => {
+  const claim = { by: "1click", status: "FAILED", observedAt: NOW, class: "REPORTED" };
+  assert.deepEqual((await openCase(ADDRESS, stub({ claim: async () => claim }))).caseData.claims, [claim]);
+});
+test("a hash doesn't ask 1Click", async () => {
+  let asked = false;
+  await openCase(NEAR_TX, stub({ claim: async () => { asked = true; return null; } }));
+  assert.equal(asked, false);
+});
+test("legs are linked in order", async () => {
+  const two = { ...paid(), legs: [{ id: "c", provider: "near-intents", status: "CREDITED", class: "PROVEN", evidence: [] }, { id: "p", provider: "eth", status: "PAID_OUT", class: "PROVEN", evidence: [] }] };
+  assert.deepEqual((await openCase(NEAR_TX, stub({ order: async () => two }))).caseData.edges, [{ from: "c", to: "p", kind: "paid-to" }]);
+});
