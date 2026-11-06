@@ -31,3 +31,17 @@ test("no command prints usage and exits 1", () => {
   assert.equal(r.status, 1);
   assert.match(r.stderr, /check/);
 });
+test("root prints the Merkle root and the command to pin it, and signs nothing", () => {
+  const r = run("root", "fixtures", "--day", "2026-11-05", "--account", "sentinel.cryppit.testnet");
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /root [0-9a-f]{64}/);
+  assert.match(r.stdout, /leaves 3/);
+  assert.match(r.stdout, /near contract call-function as-transaction sentinel\.cryppit\.testnet pin/);
+});
+test("root needs a day", () => assert.equal(run("root", "fixtures").status, 1));
+test("prove gives a proof for a recorded verdict", () => {
+  const { verdict } = JSON.parse(run("replay", "omni-665", "--json").stdout);
+  const p = JSON.parse(run("prove", "fixtures", verdict.outputHash).stdout);
+  assert.equal(p.size, 3);
+  assert.ok(Array.isArray(p.path));
+});
