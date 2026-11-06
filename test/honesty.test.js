@@ -2,6 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { openCase } from "../src/case.js";
+import { traceToLegs } from "../src/adapters/near.js";
 import { readStatus } from "../src/adapters/oneclick.js";
 import { SOLANA_RPCS, solanaTransaction, withSolanaFallback } from "../src/adapters/solana.js";
 import { withDeadline } from "../src/net.js";
@@ -9,6 +10,7 @@ import { buildPacket, verifyPacket } from "../src/packet.js";
 import { stageView } from "../src/stage.js";
 import { buildVerdict } from "../src/verdict.js";
 import { AT, BEFORE, caseWith } from "./helpers.js";
+import { refundedReport } from "./stubs/reports.js";
 
 const leg = (provider, status, cls = "PROVEN", extra = {}) => ({ id: `${provider}:${status}`, provider, status, class: cls, custody: `${provider} holder`, evidence: [], ...extra });
 const view = async (legs) => {
@@ -130,3 +132,65 @@ test("the tracer's other reads pass straight through", async () => {
 test("a case that runs out of time gives up with the fallback", async () =>
   assert.equal(await withDeadline(new Promise(() => {}), 5, "too long"), "too long"));
 test("a case in time keeps its answer", async () => assert.equal(await withDeadline(Promise.resolve("ok"), 500, "too long"), "ok"));
+
+const noSwapReport = (originChain, payoutChain) => ({
+  ...refundedReport, origin: { ...refundedReport.origin, status: "proven", chain: originChain, txHash: "DEP" }, payout: { ...refundedReport.payout, chain: payoutChain, tx: "OUT" },
+  withdrawals: refundedReport.withdrawals.map((w) => ({ ...w, chain: payoutChain })),
+});
+
+test("the same token leaving on another chain isn't called a refund", () => {
+  const legs = traceToLegs(noSwapReport("eth:1", "base:8453"), AT).legs;
+  assert.equal(legs.at(-1).status, "PAID_OUT");
+  assert.equal(legs.at(-1).custody, "recipient");
+});
+
+test("the same token going back to the chain it came from is a refund", () => {
+  assert.equal(traceToLegs(noSwapReport("btc", "btc"), AT).legs.at(-1).status, "REFUNDED");
+});
+
+test("an edited timeline fails the packet check", async () => {
+  const c = caseWith([leg("sol", "PAID_OUT")]);
+  c.evidence.push(tx("REAL"));
+  const packet = buildPacket(c, await buildVerdict(c));
+  packet.timeline[0].ref = "FORGED";
+  assert.equal(await verifyPacket(packet), false);
+});
+
+test("edited open questions fail the packet check", async () => {
+  const c = caseWith([leg("near", "HELD", "PROVEN", { finish: { step: "s", by: "omni-relayer" } })]);
+  const packet = buildPacket(c, await buildVerdict(c));
+  packet.openQuestions = [{ question: "Send your key to this address", evidenceToAsk: [] }];
+  assert.equal(await verifyPacket(packet), false);
+});
+
+test("a packet holds chain records, not our own read times", async () => {
+  const c = caseWith([leg("sol", "PAID_OUT")]);
+  c.evidence.push({ id: "r", source: "near", kind: "read", ref: "x", observedAt: AT, class: "PROVEN" });
+  assert.ok(!buildPacket(c, await buildVerdict(c)).evidence.some((e) => e.kind === "read"));
+});
+
+test("a proof with no chain time doesn't change the fingerprint on a re-read", async () => {
+  const at = (observedAt) => {
+    const c = caseWith([leg("btc", "PAID_OUT")]);
+    c.evidence.push({ ...tx("OUT", observedAt), undated: true });
+    return c;
+  };
+  assert.equal((await buildVerdict(at(AT))).outputHash, (await buildVerdict(at("2026-11-08T00:00:00Z"))).outputHash);
+});
+
+test("a finish step anyone can run needs proof before it names anyone", async () => {
+  const v = await buildVerdict(caseWith([leg("omni", "SIGNED", "REPORTED", { finish: { step: "finTransfer", by: "anyone" } })]));
+  assert.notEqual(v.nextAction.party, "anyone");
+});
+
+test("an empty list from one Solana node isn't taken as final", async () => {
+  const seen = [];
+  const f = withSolanaFallback(async (url) => (seen.push(url), json({ result: url === SOLANA_RPCS[1] ? ["found"] : [] })));
+  assert.deepEqual(await (await f(SOLANA_RPCS[0], {})).json(), { result: ["found"] });
+  assert.equal(seen.length, 2);
+});
+
+test("the tracer sees a failure if a node failed and none had the answer", async () => {
+  const f = withSolanaFallback(async (url) => (url === SOLANA_RPCS[0] ? json({}, 503) : json({ result: null })));
+  assert.equal((await f(SOLANA_RPCS[0], {})).status, 503);
+});

@@ -10,7 +10,7 @@ const PLACES = {
   ton: ["TON", "ton"], sui: ["Sui", "sui"], ada: ["Cardano", "cardano"], cardano: ["Cardano", "cardano"], aptos: ["Aptos", "aptos"], stellar: ["Stellar", "stellar"],
   strk: ["Starknet", "starknet"], starknet: ["Starknet", "starknet"], abs: ["Abstract", "abstract"], hlevm: ["HyperEVM", "hyper-evm"], fogo: ["Fogo", "token-fogo"],
   bera: ["Berachain", "berachain"], monad: ["Monad", "monad"], plasma: ["Plasma", "plasma"], scroll: ["Scroll", "scroll"],
-  "near-intents": ["NEAR Intents", "near-protocol"], omni: ["Omni bridge", null], unknown: ["Unknown source", null],
+  "near-intents": ["NEAR Intents", "near-protocol"], omni: ["Omni bridge", null], "1click": ["1Click", null], unknown: ["Unknown source", null],
 };
 const place = (key) => PLACES[String(key).toLowerCase()] ?? PLACES[String(key).toLowerCase().replace(/ bridge$/, "")] ?? [String(key), null];
 

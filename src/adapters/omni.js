@@ -39,7 +39,8 @@ async function nearTxSucceeded(tx, ctx) {
   const found = (await postJson(FASTNEAR_TX, { tx_hashes: [tx] }, ctx)).transactions?.[0];
   if (!found) return false;
   const outcomes = [found.execution_outcome, ...(found.receipts ?? []).map((r) => r.execution_outcome)];
-  return !outcomes.some((o) => o?.outcome?.status?.Failure);
+  const succeeded = (o) => ["SuccessValue", "SuccessReceiptId"].some((k) => Object.hasOwn(Object(o?.outcome?.status), k));
+  return outcomes.every(succeeded);
 }
 
 /** True only when the chain itself shows the transaction succeeded. Chains we can't read here stay false. */
@@ -74,7 +75,7 @@ async function transferToCase(t, ctx) {
   const finish = status === "FINALISED" ? null : finishStep({ status: t.status, origin: t.origin_chain, dest: t.destination_chain });
   const evidence = tx ? [{ id: `omni:${tx}`, source: t.initialised.chain.toLowerCase(), kind: "tx", ref: tx, observedAt: iso(t.initialised.timestamp_seconds), class: originProven ? "PROVEN" : "REPORTED" }] : [];
   const dest = destinationTx(t);
-  if (confirmed) evidence.push({ id: `omni:${dest}`, source: t.destination_chain.toLowerCase(), kind: "tx", ref: dest, observedAt: t.finalised?.timestamp_seconds ? iso(t.finalised.timestamp_seconds) : ctx.now, class: "PROVEN" });
+  if (confirmed) evidence.push({ id: `omni:${dest}`, source: t.destination_chain.toLowerCase(), kind: "tx", ref: dest, class: "PROVEN", ...(t.finalised?.timestamp_seconds ? { observedAt: iso(t.finalised.timestamp_seconds) } : { observedAt: ctx.now, undated: true }) });
   evidence.push({ id: `read:omni:${ref}`, source: "omni", kind: "read", ref, observedAt: ctx.now, class: agrees ? "PROVEN" : "REPORTED" });
   const legs = [{
     id: `omni:${ref}`, provider: "omni", ref, status, class: agrees ? "PROVEN" : "REPORTED", custody: status === "FINALISED" ? "recipient" : "omni bridge", evidence: tx ? [`omni:${tx}`] : [],

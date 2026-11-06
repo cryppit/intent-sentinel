@@ -110,7 +110,7 @@ function clearStage(tone) {
   answer.dataset.tone = tone;
 }
 
-function drawStage(view, picked, caseId) {
+function drawStage(view, picked, caseId, openFile) {
   stage.classList.remove("reading");
   rig.dataset.tone = view.tone;
   const nodes = [];
@@ -128,8 +128,9 @@ function drawStage(view, picked, caseId) {
   const more = el("button", { type: "button", class: "a-more" }, "See the full case →");
   more.addEventListener("click", () => {
     setPlaying(false);
-    if (caseId) openRecorded(caseId, true);
-    else out.scrollIntoView({ block: "start" });
+    if (caseId) return openRecorded(caseId, true);
+    openFile();
+    out.scrollIntoView({ block: "start" });
   });
   answer.replaceChildren(words, more);
   answer.dataset.tone = view.tone;
@@ -204,11 +205,12 @@ const recordedNote = (caseData) => `Recorded from public chain data on ${caseDat
 function present(result, caseId, note, full) {
   const view = caseView(result.verdict);
   const data = stageView(result.caseData, result.verdict);
-  drawStage(data, view, caseId);
-  if (full) {
+  const openFile = () => {
     caseFile(result, view, data, note);
     out.hidden = false;
-  }
+  };
+  drawStage(data, view, caseId, openFile);
+  if (full) openFile();
 }
 
 function hideCaseFile() {

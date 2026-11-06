@@ -38,6 +38,7 @@ function evidenceOf(report, ends, now) {
     const at = w?.timestampNs != null ? later(w.timestampNs, payout.delaySec) : now;
     items.push({ id: `payout:${payout.tx}`, source: short(payout.chain), kind: "tx", ref: payout.tx, observedAt: at, class: classOf(payout) });
   }
+  for (const item of items) if (item.observedAt === now) item.undated = true;
   items.push({ id: `read:near:${report.account}`, source: "near", kind: "read", ref: report.account, observedAt: now, class: "PROVEN" });
   return items;
 }
@@ -56,7 +57,10 @@ function ledgerBalance(report) {
 }
 
 function endLeg({ w, payout }, report, at) {
-  const isRefund = w?.excessRefund || report.verdict === "refunded";
+  // The tracer's "refunded" means the deposited token left without a swap. Leaving on another chain isn't going back.
+  const from = report.origin?.chain;
+  const elsewhere = from && payout.chain && short(from) !== short(payout.chain);
+  const isRefund = w?.excessRefund || (report.verdict === "refunded" && !elsewhere);
   const id = `end:${w?.tx ?? "order"}`;
   if (payout.status !== "arrived") return { id, provider: short(payout.chain ?? w?.chain), ref: w?.tx, status: "PAYOUT_UNSEEN", class: "UNKNOWN", custody: "unknown", at };
   return { id, provider: short(payout.chain), ref: payout.tx ?? w?.tx, amount: payout.amount ?? undefined, class: classOf(payout), at, status: isRefund ? "REFUNDED" : "PAID_OUT", custody: isRefund ? "refund address" : "recipient" };

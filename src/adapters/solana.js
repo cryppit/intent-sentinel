@@ -23,20 +23,21 @@ export async function solanaTransaction(sig, ctx) {
 /** A fetch for the tracer, which takes one Solana URL: it tries the others when the first refuses or has no answer. */
 export const withSolanaFallback = (f) => async (url, init) => {
   if (url !== SOLANA_RPCS[0]) return f(url, init);
-  let last = null;
+  let empty = null;
+  let refused = null;
   let failure = null;
   for (const rpc of SOLANA_RPCS) {
     try {
       const res = await f(rpc, init);
-      last = res;
-      if (res.ok) {
-        const body = await res.clone().json();
-        if (body.result && !body.error) return res;
-      }
+      const body = res.ok ? await res.clone().json() : null;
+      if (!res.ok || body.error) refused ??= res;
+      else if (Array.isArray(body.result) ? body.result.length : body.result) return res;
+      else empty = res;
     } catch (e) {
-      failure = e;
+      failure ??= e;
     }
   }
-  if (last) return last;
-  throw failure;
+  if (refused) return refused;
+  if (failure) throw failure;
+  return empty;
 };

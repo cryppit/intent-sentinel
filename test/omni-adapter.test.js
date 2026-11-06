@@ -12,7 +12,8 @@ const v4 = (over = {}) => ({
   initialised: { transaction_hash: "INIT", chain: "Near", timestamp_seconds: 1790590583 }, signed: [], ...over,
 });
 const res = (body, status = 200) => new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
-const ctxFor = ({ transfer, paid = false, dead = false, solana, nearTx = { receipts: [] } } = {}) => ({
+const nearOk = { execution_outcome: { outcome: { status: { SuccessValue: "" } } }, receipts: [] };
+const ctxFor = ({ transfer, paid = false, dead = false, solana, nearTx = nearOk } = {}) => ({
   now: NOW,
   omniPaid: async () => paid,
   fetch: async (url) => {
@@ -154,4 +155,16 @@ test("a transfer with no start on record is never proven by an unpaid contract",
 test("signed with no signing transaction stays reported, even when the contract is unpaid", async () => {
   const r = await readTransfer("near:7", ctxFor({ transfer: v4({ status: "Signed", signed: [] }) }));
   assert.equal(r.legs[0].class, "REPORTED");
+});
+
+for (const [name, nearTx] of [["no outcome at all", {}], ["an unknown status", { execution_outcome: { outcome: { status: "Unknown" } }, receipts: [] }], ["a receipt with no status", { execution_outcome: nearOk.execution_outcome, receipts: [{}] }]]) {
+  test(`a NEAR read with ${name} proves nothing`, async () => {
+    const r = await readTransfer("near:7", ctxFor({ transfer: settled("Near"), nearTx }));
+    assert.equal(r.legs[0].class, "REPORTED");
+  });
+}
+
+test("a Btc finish with no chain time is marked undated", async () => {
+  const r = await readTransfer("near:7", ctxFor({ transfer: v4({ destination_chain: "Btc", status: "Settled", utxo_winning_tx_hash: "DEST", finalised: null }) }));
+  assert.equal(r.evidence.find((e) => e.ref === "DEST").undated, true);
 });

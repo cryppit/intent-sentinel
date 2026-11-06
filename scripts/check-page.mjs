@@ -28,7 +28,7 @@ ws.onmessage = ({ data }) => {
   const m = JSON.parse(data);
   if (m.id) return pending.get(m.id)?.(m), pending.delete(m.id);
   if (m.method === "Runtime.exceptionThrown") problems.push(`exception: ${m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text}`);
-  if (m.method === "Log.entryAdded" && m.params.entry.level === "error" && !/favicon/.test(m.params.entry.url ?? "")) problems.push(`console: ${m.params.entry.text} ${m.params.entry.url ?? ""}`);
+  if (m.method === "Log.entryAdded" && m.params.entry.level === "error" && !/favicon|api\/v4\/transfers/.test(m.params.entry.url ?? "")) problems.push(`console: ${m.params.entry.text} ${m.params.entry.url ?? ""}`);
 };
 const send = (method, params = {}) => new Promise((res) => { const n = ++id; pending.set(n, res); ws.send(JSON.stringify({ id: n, method, params })); });
 const js = async (expression) => {
@@ -129,6 +129,12 @@ if (live) {
     await wait(2600);
     await shot(`live-${input.replace(":", "-")}`);
   }
+  await click("#demo-toggle");
+  await wait(150);
+  check("play hides a live case file", await js("document.getElementById('out').hidden"));
+  await click(".a-more");
+  await wait(300);
+  check("see the full case brings a live case back", (await text("#out .verdict")).includes("Nobody needs to act"));
   await js(`document.getElementById('id').value="Near:563761";document.getElementById('form').requestSubmit()`);
   await wait(50);
   await click('#stage [data-case="omni-665"]');

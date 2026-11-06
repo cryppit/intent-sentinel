@@ -94,7 +94,7 @@ const RULES = [
   },
   {
     code: "PERMISSIONLESS_FINISH",
-    fires: (c) => leg(c, (l) => l.finish?.by === "anyone"),
+    fires: (c) => leg(c, (l) => l.finish?.by === "anyone" && isProven(l)),
     party: () => "anyone",
     question: (c, l) => `${l.finish.step} can be run by anyone for ${refOf(l)}. Who will run it?`,
     ask: () => [],
