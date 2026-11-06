@@ -8,7 +8,7 @@ import { SOLANA_RPCS, withSolanaFallback } from "./solana.js";
 const iso = (ns) => (ns == null ? null : new Date(Number(BigInt(ns) / 1_000_000n)).toISOString());
 // The tracer writes chains several ways: eth:8453 is Base, bnb is bsc, zcash:mainnet is zec. An EVM id we don't know keeps
 // its id, so it's never called Ethereum.
-const EVM_IDS = { 1: "eth", 8453: "base", 42161: "arb", 100: "gnosis", 9745: "plasma", 80094: "bera", 56: "bsc", 10: "op", 137: "pol", 43114: "avax" };
+const EVM_IDS = { 1: "eth", 8453: "base", 42161: "arb", 100: "gnosis", 9745: "plasma", 80094: "bera", 56: "bsc", 10: "op", 137: "pol", 43114: "avax", 196: "xlayer" };
 const CHAIN_ALIAS = { bnb: "bsc", zcash: "zec", strk: "starknet" };
 const short = (chain) => {
   const [network, id] = String(chain ?? "near").toLowerCase().split(":");
@@ -69,7 +69,7 @@ function endLeg({ w, payout }, report, at) {
   const backHome = report.origin?.status === "proven" && payout.chain && short(report.origin.chain) === short(payout.chain);
   const isRefund = w?.excessRefund || (report.verdict === "refunded" && backHome);
   const id = `end:${w?.tx ?? "order"}`;
-  if (payout.status !== "arrived") return { id, provider: short(payout.chain ?? w?.chain), ref: w?.tx, status: "PAYOUT_UNSEEN", class: "UNKNOWN", custody: "unknown", at };
+  if (payout.status !== "arrived") return { id, provider: short(payout.chain ?? w?.chain ?? "unknown"), ref: w?.tx, status: "PAYOUT_UNSEEN", class: "UNKNOWN", custody: "unknown", at };
   return { id, provider: short(payout.chain), ref: payout.tx ?? w?.tx, amount: payout.amount ?? undefined, class: classOf(payout), at, status: isRefund ? "REFUNDED" : "PAID_OUT", custody: isRefund ? "refund address" : "recipient" };
 }
 
@@ -95,7 +95,7 @@ export function traceToLegs(report, now) {
   const open = openLeg(report, lastAt);
   if (open) legs.push(open);
   if (report.balanceCheck?.status === "not_verified") legs.push({ id: "balance-check", provider: "intents.near", status: "LOOKUP_FAILED", class: "UNKNOWN", reason: report.balanceCheck.reason });
-  const follow = ends.filter(({ payout }) => payout.status === "arrived" && PROVEN_PAYOUT.includes(payout.how) && payout.tx?.startsWith("0x") && EVM_RPC[payout.chain]);
+  const follow = ends.filter(({ payout }) => payout.status === "arrived" && PROVEN_PAYOUT.includes(payout.how) && payout.tx?.startsWith("0x") && EVM_RPC[short(payout.chain)]);
   const hops = [...report.deposits, ...report.swaps, ...report.transfers, ...report.withdrawals].map((h) => h.tx);
   const ids = [report.account, o.txHash, o.originNonce, ...hops, ...ends.map((e) => e.payout.tx)];
   return {
@@ -105,7 +105,7 @@ export function traceToLegs(report, now) {
     claims: [],
     identifiers: [...new Set(ids.filter(Boolean))],
     warnings: report.flags.filter((f) => f.kind in WARNINGS).map(({ kind, detail }) => ({ kind, party: WARNINGS[kind], detail })),
-    next: follow.map(({ payout }) => ({ kind: "evm-tx", chain: payout.chain, value: payout.tx })),
+    next: follow.map(({ payout }) => ({ kind: "evm-tx", chain: short(payout.chain), value: payout.tx })),
   };
 }
 

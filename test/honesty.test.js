@@ -235,3 +235,15 @@ test("a proof with no chain time carries no date, so none can be edited in", asy
   p.evidence.find((e) => e.ref === "OUT").observedAt = BEFORE;
   assert.equal(await verifyPacket(p), false);
 });
+
+test("a payout on bnb still gets its transaction checked", () => {
+  const report = { ...noSwapReport("eth:1", "bnb"), payout: { ...refundedReport.payout, chain: "bnb", tx: "0xout" } };
+  assert.deepEqual(traceToLegs(report, AT).next.map((n) => n.chain), ["bsc"]);
+});
+
+test("a withdrawal with no chain isn't called NEAR", () => {
+  const report = { ...refundedReport, verdict: "in_progress", withdrawals: refundedReport.withdrawals.map((w) => ({ ...w, chain: null })), payout: { status: "unverified", chain: null } };
+  assert.ok(!traceToLegs(report, AT).legs.some((l) => l.status === "PAYOUT_UNSEEN" && l.provider === "near"));
+});
+
+test("X Layer deposits keep their own name", () => assert.equal(traceToLegs(noSwapReport("eth:196", "xlayer"), AT).legs.at(-1).status, "REFUNDED"));
