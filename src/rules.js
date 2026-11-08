@@ -129,7 +129,8 @@ const RULES = [
     // NEAR Intents. One that never came back can only be explained by NEAR Intents or the signed-in owner.
     code: "NOT_VISIBLE",
     fires: (c, at) => {
-      const hidden = settled(c) ? null : leg(c, (l) => l.class === "NOT_VISIBLE");
+      // A private step the money already came back out of is resolved; what's left is the payout's own question.
+      const hidden = settled(c) ? null : leg(c, (l) => l.class === "NOT_VISIBLE" && !l.facts?.privateRoundTrip);
       return hidden && { ...hidden, fresh: privateFresh(hidden, at) };
     },
     party: (c, l) => (l.fresh ? "near-intents" : "user"),
@@ -147,8 +148,10 @@ const ASK_MORE = { party: "unknown", question: "What could not be read, and can 
 // How long after the credit an unseen payout is still most likely on its way. Bitcoin and Zcash withdrawals are slower.
 const PENDING_MS = { btc: 3 * 3600_000, zec: 3 * 3600_000 };
 const PENDING_DEFAULT_MS = 3600_000;
-const WAIT = { party: "unknown", question: "The payout hasn't shown up yet, but the money was credited recently, so it is probably still on its way. Check again in a few minutes.", evidenceToAsk: ["the same ID again in a few minutes"] };
-const young = (l, at) => l.status === "PAYOUT_UNSEEN" && l.at && when(at) - when(l.at) <= (PENDING_MS[l.provider] ?? PENDING_DEFAULT_MS);
+const WAIT = { party: "unknown", question: "The payout isn't proven yet, but the money was credited recently, so it is probably still on its way. Check again in a few minutes.", evidenceToAsk: ["the same ID again in a few minutes"] };
+// Not seen yet, or seen but not confirmed (e.g. a Bitcoin payout still in the mempool).
+const awaited = (l) => l.status === "PAYOUT_UNSEEN" || (l.status === "PAID_OUT" && !isProven(l));
+const young = (l, at) => awaited(l) && l.at && when(at) - when(l.at) <= (PENDING_MS[l.provider] ?? PENDING_DEFAULT_MS);
 
 const SETTLED = ["PAID_OUT", "REFUNDED"];
 const STILL_OPEN = ["PAYOUT_UNSEEN", "NOT_PROVEN", "HELD", "CREDIT_PENDING"];

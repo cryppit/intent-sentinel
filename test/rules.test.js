@@ -174,3 +174,23 @@ test("a private step that never came back sends the owner to NEAR Intents suppor
   assert.equal(r.nextAction.party, "user");
   assert.match(r.nextAction.question, /NEAR Intents support/);
 });
+test("a private step that came back out never sends a payout still on its way to support", () => {
+  const roundTrip = { provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", facts: { privateRoundTrip: true } };
+  const r = evaluate(caseWith([credited, roundTrip, unseen("btc", 1)]), AT);
+  assert.ok(r.findings.includes("PAYOUT_PENDING"), r.findings.join());
+  assert.doesNotMatch(r.nextAction.question, /support/);
+});
+test("a private step that came back out leaves an unproven payout to the payout's own rules", () => {
+  const roundTrip = { provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", facts: { privateRoundTrip: true } };
+  const r = evaluate(caseWith([credited, roundTrip, { provider: "btc", status: "PAID_OUT", class: "INFERRED" }]), AT);
+  assert.ok(!r.findings.includes("NOT_VISIBLE"), r.findings.join());
+});
+test("a payout seen but not yet confirmed, soon after the credit, is on its way", () => {
+  const r = evaluate(caseWith([credited, { provider: "btc", status: "PAID_OUT", class: "INFERRED", at: minsBefore(5) }]), AT);
+  assert.equal(r.journey, "INSUFFICIENT_EVIDENCE");
+  assert.ok(r.findings.includes("PAYOUT_PENDING"), r.findings.join());
+});
+test("a payout seen but never confirmed for hours is not called on its way", () => {
+  const r = evaluate(caseWith([credited, { provider: "btc", status: "PAID_OUT", class: "INFERRED", at: minsBefore(600) }]), AT);
+  assert.ok(!r.findings.includes("PAYOUT_PENDING"));
+});
