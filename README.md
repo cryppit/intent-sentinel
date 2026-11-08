@@ -139,7 +139,7 @@ Every fact has an evidence class:
 Nothing goes to a Cryppit server: the page is static, and what you paste goes from your browser to about 70 public services. They are blockchain servers (some run by community volunteers, such as `rpc.intea.rs` and `rpc.shitzuapes.xyz`, which see the order's NEAR Intents account), bridge records and block explorers. They also see the addresses and transactions the swap leads to.
 
 - Any address you paste goes to 1Click (`1click.chaindefuser.com/v0/status`), not only a deposit address: a `0x…`, `bc1…` or `T…` address, or a `.near` name, even if it's your own wallet.
-- The swap's NEAR withdrawal transactions go to NEAR Intents' bridge records, `bridge.chaindefuser.com` and `bridge-indexer.chaindefuser.com`, on the same web domain as 1Click.
+- The swap's NEAR withdrawal transactions, and a pasted transaction that may be a payout, go to NEAR Intents' bridge records, `bridge.chaindefuser.com` and `bridge-indexer.chaindefuser.com`, on the same web domain as 1Click.
 - Every service sees your IP address, and the `Origin` header tells it the request came from this site. `no-referrer` only removes the `Referer` header.
 - The page has no tracking and saves nothing in your browser, and its reads ask the browser not to keep answers in its cache. Use a VPN or Tor if that matters to you.
 
