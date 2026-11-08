@@ -83,7 +83,7 @@ All tests should pass, with no network.
 node cli.js replay omni-665 --json
 ```
 
-You should see the verdict, the proven evidence, a timeline and the open question. Exit codes let an agent gate on the answer before it retries or spends: `0` nothing to do, `2` someone must act, `3` not enough evidence, `1` bad input.
+You should see the verdict, the proven evidence, a timeline and the open question. Exit codes let an agent gate on the answer before it retries or spends: `0` nothing to do, `2` someone must act, `3` not enough evidence (also a valid ID that can't be checked on its own, such as a payout no record leads back from), `1` bad input.
 
 **7. Build a day's root**
 
@@ -110,7 +110,9 @@ near contract call-function as-read-only sentinel.cryppit.testnet get_pin json-a
 
 ## How NEAR fits
 
-- It reads NEAR Intents orders on `intents.near`, through FastNEAR and public RPCs. A payout through the HOT bridge to an EVM chain is proven from chain data: the nonce HOT logs when it burns the token on NEAR, `usedNonces` on HOT's payout contract, and the `withdraw` call itself, even when it's nested inside another call. HOT payouts to TON and Stellar are proven when HOT's indexer names the payout transaction and the chain read matches; when it names none, they stay unproven.
+- It reads NEAR Intents orders on `intents.near`, through FastNEAR and public RPCs. A payout through the HOT bridge to an EVM chain is proven from chain data: the nonce HOT logs when it burns the token on NEAR, `usedNonces` on HOT's payout contract, and the `withdraw` call itself, even when it's nested inside another call. HOT payouts to TON and Stellar are proven when HOT's indexer names the payout transaction and the chain read matches; when it names none, they stay unproven. A HOT payout of a TON token, such as USDT on TON, is proven when the transaction HOT names shows the receiver's own token wallet taking in exactly the amount HOT burned on NEAR, from HOT's token wallet, finished and not failed (read on toncenter).
+- You can paste the payout transaction, the money arriving, which is the hash people most often hold. For a HOT payout, HOT's indexer names the NEAR transaction behind it, and the case is read from there. For a payout sent by NEAR Intents' own payout wallets, no public record leads back to the order, so it says so in plain words and asks for the transaction that sent the money, or the deposit address.
+- An account used for several swaps shows one of them and says which. An account with too many transactions to read (thousands) can still be checked through one pasted withdrawal: its payout is checked on its own, and the case says the rest of the account wasn't read.
 - Since 27 Oct 2026, 1Click swaps settle on NEAR's private shard. The case shows that step as `NOT_VISIBLE` ("settled privately") and never guesses what happened inside it. If the money came back out to a proven payout, the case is done. If it went in less than an hour ago, NEAR Intents is still settling it. If it never came back, only NEAR Intents and the signed-in owner can see it, so the owner is told to ask NEAR Intents support.
 - It reads Omni bridge transfers from the bridge's indexer, which can lag, then checks the chain: the destination contract on EVM chains, or the finishing transaction on Solana, Bitcoin and NEAR. Without a chain read, a status stays `REPORTED`. A Fast Transfer, where a relayer pays the recipient before the bridge finishes, counts as finished, so nobody is told to act on a paid transfer; it's proven when its transaction moved the token to the recipient.
 - Each day's evidence packets form an RFC 6962 Merkle root that can be pinned on NEAR. With a packet and its proof from `node cli.js prove`, anyone can check by a public view call that it existed unchanged that day: `node cli.js verify`. A changed verdict or changed evidence fails.
@@ -136,6 +138,12 @@ Every fact has an evidence class:
 
 - It covers NEAR Intents orders and Omni transfers. It doesn't yet trace Chainflip's payout side, so such a leg stays unknown.
 - A confidential leg is never guessed at, and private halves are never paired by amount or time.
+- Zcash payouts to a shielded address (`u1…`, `zs…`) are private by design. The bridge names a Zcash transaction, and the amount it put into the shielded pool is checked against the withdrawal, but who received it can't be seen. So the payout stays "likely, not proven" and the case ends with "not enough evidence".
+- An Omni transfer to Solana or Bitcoin is read through the bridge's indexer. When the indexer is slow or has no record yet, there's no other read, so the payout stays unproven until the indexer catches up.
+- A pasted payout transaction leads back to its order only for HOT payouts. For other bridges it's recognised by the public payout wallet that sent it (NEAR Intents' on EVM chains, Bitcoin, TRON and Solana, HOT's on EVM chains and Solana); a payout from any other wallet isn't recognised.
+- A deposit or swap transaction from an account with thousands of transactions can't be matched to one swap; the case asks for the withdrawal or the deposit address instead.
+- Some payouts aren't proven yet: HOT payouts to Gonka and to Solana, a second withdrawal to a NEAR account in the same order, and tokens the tracer doesn't recognise (for example USDC and USDT on Sui and Aptos). A HOT payout on TON or Stellar is proven only when HOT's indexer names the transaction. These stay unproven, never paid.
+- XRP Ledger and Sui deposit transactions aren't searchable yet. Paste the NEAR transaction or the deposit address instead.
 - 1Click status is a claim, held in memory only. For a deposit address it also finds the NEAR order, and the case then rests on what the chain shows. Only the claim's category is kept. Every NEAR order read also fetches 1Click's public token list, which carries nothing about the order.
 - Solana reads try two browser-friendly public endpoints first, then `api.mainnet-beta`, which refuses web pages. An empty answer only counts as missing if every endpoint answered.
 - Amounts are checked on the NEAR ledger only, and only with no swap. Otherwise the case says they weren't checked.
