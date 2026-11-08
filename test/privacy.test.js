@@ -19,6 +19,6 @@ test("scripts come only from this site", () => {
 test("no wildcard in connect-src", () => assert.doesNotMatch(connect, /\*|https:(\s|$)/));
 test("every host the code calls is allowed", () => {
   const hosts = new Set([...code.matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/g)].map((m) => m[1]));
-  for (const skip of ["github.com", "docs.near.org", "www.w3.org", "nearblocks.io", "etherscan.io", "solscan.io", "basescan.org", "arbiscan.io", "bscscan.com", "tronscan.org"]) hosts.delete(skip);
+  for (const skip of ["github.com", "docs.near.org", "www.w3.org", "nearblocks.io", "etherscan.io", "solscan.io", "basescan.org", "arbiscan.io", "bscscan.com", "tronscan.org", "explorer.testnet.near.org", "explorer.near.org"]) hosts.delete(skip);
   for (const h of hosts) assert.ok(connect.includes(`https://${h}`), `${h} is missing from connect-src`);
 });

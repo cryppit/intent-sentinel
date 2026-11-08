@@ -4,7 +4,8 @@ import { buildPacket } from "./packet.js";
 import { caseView, explorerUrl } from "./render-case.js";
 import { placeName, stageView } from "./stage.js";
 import { withDeadline } from "./net.js";
-import { shortRef } from "./words.js";
+import { shortRef, wheelChains } from "./words.js";
+import { LATEST_PIN, pinUrl } from "./pins.js";
 import { buildVerdict } from "./verdict.js";
 
 const $ = (id) => document.getElementById(id);
@@ -51,7 +52,7 @@ function coin(stop) {
 
 // Who a party is, in one line, shown under the headline. And where the money was last seen, in words.
 const WHO_IS = {
-  "omni-relayer": "An Omni relayer is the bridge's operator. Only it can run this step.",
+  "omni-relayer": "You and your app can't run this step yourselves. It's the bridge's job.",
   "near-intents": "NEAR Intents is the NEAR service that holds your coins between the steps of a swap.",
   integrator: "Your app is the wallet or website you swapped through.",
   anyone: "This step is open: anyone, including you, can do it.",
@@ -318,6 +319,35 @@ function showTab() {
   if (explained) document.getElementById(id).scrollIntoView({ block: "start" });
   else requestAnimationFrame(() => drawBeam(false));
 }
+
+// The wheel of blockchains it can follow, NEAR in the middle, and the badge for the latest day pinned on NEAR.
+function buildWheel() {
+  const [hub, ...rest] = wheelChains();
+  const wheel = $("wheel");
+  $("wheel-count").textContent = String(rest.length + 1);
+  wheel.setAttribute("aria-label", `Blockchains it can follow: ${[hub, ...rest].map((c) => c.name).join(", ")}`);
+  wheel.style.setProperty("--cycle", `${rest.length * 0.4}s`);
+  const split = Math.ceil(rest.length * 0.6);
+  let n = 0;
+  for (const [kind, list] of [["outer", rest.slice(0, split)], ["inner", rest.slice(split)]]) {
+    const ring = el("div", { class: `w-ring ${kind}` });
+    list.forEach((c, i) => {
+      const coinNode = el("span", { class: "w-coin", title: c.name }, el("img", { src: `logos/${c.logo}.svg`, alt: "", width: 34, height: 34 }));
+      coinNode.style.setProperty("--a", `${(360 / list.length) * i}deg`);
+      coinNode.style.setProperty("--d", `${(n++) * 0.4}s`);
+      ring.append(coinNode);
+    });
+    wheel.append(ring);
+  }
+  wheel.append(el("div", { class: "w-hub" }, el("img", { src: `logos/${hub.logo}.svg`, alt: "", width: 40, height: 40 }), el("b", {}, hub.name), el("small", {}, "where swaps settle")));
+  const strip = $("chain-strip");
+  for (const c of [hub, ...rest].slice(0, 8)) strip.append(el("img", { src: `logos/${c.logo}.svg`, alt: "", title: c.name }));
+  strip.append(el("span", {}, el("b", {}, `${rest.length + 1} blockchains`), ` · +${rest.length - 7} more ↓`));
+  const badge = $("pin-badge");
+  badge.href = pinUrl(LATEST_PIN);
+  badge.append(el("img", { src: "logos/near-protocol.svg", alt: "" }), el("span", {}, "Pinned on NEAR"), el("b", {}, dayWords(LATEST_PIN.day)), el("small", {}, `${LATEST_PIN.cases} cases · ${LATEST_PIN.network} · see the pin →`));
+}
+buildWheel();
 
 addEventListener("hashchange", showTab);
 addEventListener("resize", () => drawBeam(false));

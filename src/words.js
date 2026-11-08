@@ -41,3 +41,11 @@ export const legPlace = (id) => (id === "credit" ? "NEAR Intents" : /^omni:/.tes
 export const STATUS_SAYS = { SUCCESS: "done", FAILED: "failed", PENDING: "still in progress", REFUNDED: "refunded", UNKNOWN: "no clear status" };
 const CLAIM_BY = { "1click": "1Click (the swap service)", "user-report": "Your report" };
 export const claimWords = (c) => `${CLAIM_BY[c.by] ?? c.by} says: ${STATUS_SAYS[c.status] ?? c.status}`;
+
+/** The blockchains for the page's wheel: each once, NEAR first, only those with a logo. Services and bridges are left out. */
+const NOT_CHAINS = new Set(["near-intents", "intents.near", "omni", "1click", "unknown"]);
+export const wheelChains = () => {
+  const seen = new Map();
+  for (const [key, [name, logo]] of Object.entries(PLACES)) if (logo && !NOT_CHAINS.has(key) && !seen.has(name)) seen.set(name, { name, logo });
+  return [...seen.values()];
+};

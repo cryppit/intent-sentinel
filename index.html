@@ -181,6 +181,35 @@
   .ghost:hover { border-color: var(--lime); }
   .hash { margin: 12px 0 0; color: var(--mute); font: 12px var(--mono); overflow-wrap: anywhere; }
 
+  .strip { display: inline-flex; align-items: center; gap: 0; align-self: flex-start; margin: -4px 0 16px; padding: 6px 12px 6px 8px; border-radius: 999px; border: 1px solid var(--line); background: rgba(4, 6, 26, 0.6); color: var(--mute); text-decoration: none; font-size: 13.5px; }
+  .strip img { width: 26px; height: 26px; padding: 3px; margin-right: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #18204f, #070b22 72%); box-shadow: 0 0 0 2px #04061a, inset 0 0 0 1px rgba(143, 180, 255, 0.35); }
+  .strip span { margin-left: 14px; white-space: nowrap; }
+  .strip b { color: var(--ink); }
+  .strip:hover { border-color: var(--lime); color: var(--ink); }
+  .reach { overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: center; margin-top: 26px; padding: 28px 34px; border-radius: 20px; background: var(--glass); border: 1px solid var(--line); }
+  .reach .kicker { margin: 0; font: 600 11.5px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute); }
+  .reach h2 { margin: 6px 0 10px; font-size: clamp(30px, 3vw, 42px); line-height: 1.04; letter-spacing: -0.03em; font-weight: 850; }
+  .reach p.say { margin: 0 0 18px; color: var(--mute); max-width: 56ch; }
+  .pin-badge { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(221, 242, 74, 0.45); background: rgba(221, 242, 74, 0.06); color: var(--ink); text-decoration: none; font-size: 14.5px; }
+  .pin-badge img { width: 22px; height: 22px; }
+  .pin-badge b { color: var(--lime); }
+  .pin-badge small { color: var(--mute); font: 12px var(--mono); }
+  .pin-badge:hover { border-color: var(--lime); box-shadow: 0 0 26px -6px var(--lime); }
+  .wheel { --core: 420px; --c: 40px; position: relative; width: var(--core); height: var(--core); border-radius: 50%; }
+  .wheel::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(12, 18, 54, 0.92) 58%, rgba(12, 18, 54, 0.35) 72%, transparent 74%); box-shadow: inset 0 0 0 1px rgba(221, 242, 74, 0.2); }
+  .w-ring { position: absolute; inset: 0; animation: wspin var(--t) linear infinite; }
+  .w-ring.outer { --rad: calc(var(--core) / 2 - 28px); --t: 140s; }
+  .w-ring.inner { --rad: calc(var(--core) * 0.3); --t: 100s; animation-direction: reverse; }
+  .w-coin { position: absolute; left: 50%; top: 50%; width: var(--c); height: var(--c); margin: calc(var(--c) / -2) 0 0 calc(var(--c) / -2); transform: rotate(var(--a)) translateY(calc(var(--rad) * -1)) rotate(calc(var(--a) * -1)); }
+  .w-coin img { display: block; width: 100%; height: 100%; padding: 14%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #18204f, #070b22 72%); box-shadow: inset 0 0 0 1px rgba(143, 180, 255, 0.35); animation: wspin var(--t) linear infinite reverse, wlit var(--cycle) ease-in-out var(--d) infinite; }
+  .w-ring.inner .w-coin img { animation-direction: normal, normal; }
+  .w-hub { position: absolute; z-index: 2; left: 50%; top: 50%; width: calc(var(--core) * 0.36); height: calc(var(--core) * 0.36); transform: translate(-50%, -50%); display: grid; align-content: center; justify-items: center; gap: 3px; text-align: center; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #1d2566, #070b22 74%); box-shadow: inset 0 0 0 2px var(--lime), inset 0 0 0 9px rgba(221, 242, 74, 0.14), 0 0 70px -6px var(--lime); }
+  .w-hub img { width: 48px; height: 48px; border-radius: 50%; }
+  .w-hub b { font-size: 20px; line-height: 1.1; }
+  img[src$="/aptos.svg"], img[src$="/stellar.svg"], img[src$="/plasma.svg"] { background: #f4f1e8 !important; border-radius: 50%; }
+  .w-hub small { font: 600 10.5px/1.25 var(--mono); color: var(--lime); }
+  @keyframes wspin { to { transform: rotate(360deg); } }
+  @keyframes wlit { 0%, 7% { box-shadow: inset 0 0 0 2px var(--lime), 0 0 18px var(--lime); } 14%, 100% { box-shadow: inset 0 0 0 1px rgba(143, 180, 255, 0.35); } }
   .feats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 26px; }
   .feat { padding: 20px; border-radius: 16px; background: var(--glass); border: 1px solid var(--line); }
   .feat b { display: block; font-size: 17px; letter-spacing: -0.01em; }
@@ -235,7 +264,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .stop, .link::after, .party.lit, .stop.here .coin::before { animation: none; }
+    .stop, .link::after, .party.lit, .stop.here .coin::before, .w-ring, .w-coin img { animation: none; }
     .stage.reading .rig::before { animation-duration: 3s; }
   }
   @media (max-width: 1040px) {
@@ -251,6 +280,9 @@
   }
   @media (max-width: 760px) {
     .cases, .cols, .feats, .how, .grid2, .grid3, .grid4 { grid-template-columns: minmax(0, 1fr); }
+    .reach { grid-template-columns: minmax(0, 1fr); padding: 22px 18px; }
+    .wheel { --core: min(320px, 84vw); --c: 30px; justify-self: center; }
+    .w-hub img { width: 34px; height: 34px; } .w-hub b { font-size: 16px; } .w-hub small { font-size: 9.5px; }
     .ex-band { padding: 26px 18px; }
     .stage { padding: 16px 14px; border-radius: 20px; }
     .rig { min-height: 0; gap: 18px; }
@@ -294,6 +326,7 @@
         <p class="pill"><i></i>Free · only reads public records · never asks for your wallet</p>
         <h1>Stuck swap? <span class="hl">Who moves next?</span></h1>
         <p class="tagline">Paste one ID. See what has really happened to your money, and who has to act next.</p>
+        <a class="strip" id="chain-strip" href="#reach"></a>
         <aside class="panel">
           <form id="form">
             <label for="id">Transaction ID, link or deposit address</label>
@@ -330,6 +363,16 @@
     </section>
 
     <section id="out" aria-live="polite" hidden></section>
+
+    <section class="reach" id="reach" aria-labelledby="reach-h">
+      <div>
+        <p class="kicker">Works where your swap goes</p>
+        <h2 id="reach-h"><span id="wheel-count"></span> blockchains. <span class="hl">One check.</span></h2>
+        <p class="say">From Bitcoin to Solana, Ethereum to TRON: paste the ID and it follows your money through NEAR Intents and the Omni bridge. Where it can read a blockchain itself, the step is marked Proven. Where it can't, it says so.</p>
+        <a class="pin-badge" id="pin-badge" target="_blank" rel="noopener noreferrer"></a>
+      </div>
+      <div class="wheel" id="wheel" role="img"></div>
+    </section>
 
     <section class="feats" aria-label="What makes it different">
       <div class="feat"><b>Proof, not promises</b><p>Proven means the blockchain's public record shows it. If a company only says "done", we mark it Reported.</p></div>
