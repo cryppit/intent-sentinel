@@ -35,8 +35,20 @@ function absorb(c, found, followUp = false) {
   c.identifiers = [...new Set([...c.identifiers, ...found.identifiers])].sort();
 }
 
+// Hashes that may be a payout on another chain (the money arriving), which is the hash people most often hold.
+const MAYBE_PAYOUT = new Set(["evm-tx", "hex-tx", "solana-tx"]);
+
 async function firstAnswer(id, a, ctx, status) {
   if (id.kind === "omni-transfer") return a.transfer(id.value, ctx);
+  // A payout is recognised first: it is quick to check, and the deposit search behind it is slow and can be rate-limited.
+  if (MAYBE_PAYOUT.has(id.kind)) {
+    const side = await a.payoutSide(id, ctx);
+    if (side?.nearTx) {
+      const traced = await a.order(side.nearTx, ctx);
+      if (!traced.notFound) return traced;
+    }
+    if (side?.notice) return { notFound: side.notice, notice: true };
+  }
   const order = await a.order(id.value, ctx);
   if (!order.notFound) return order;
   if (id.kind === "deposit-address") {
@@ -44,14 +56,7 @@ async function firstAnswer(id, a, ctx, status) {
     return status?.failed ? failedRead("1click", id.value, "1Click could not be read", ctx.now) : order;
   }
   const omni = await a.transfer(id.value, ctx);
-  if (!omni.notFound) return omni;
-  // No deposit names it: it may be the payout (the money arriving), which is the hash people most often hold.
-  const side = await a.payoutSide(id, ctx);
-  if (side?.nearTx) {
-    const traced = await a.order(side.nearTx, ctx);
-    if (!traced.notFound) return traced;
-  }
-  return side?.notice ? { notFound: side.notice, notice: true } : order;
+  return omni.notFound ? order : omni;
 }
 
 const linked = (legs) => legs.slice(1).map((l, i) => ({ from: legs[i].id, to: l.id, kind: EDGE[l.status] ?? "bridged-as" }));

@@ -10,7 +10,7 @@ const HASH = "0x" + "b".repeat(64);
 const SHARED = ["order.near", NEAR_TX, NEAR_TX_2];
 const evidence = [{ id: "e", source: "t", kind: "read", ref: "r", observedAt: NOW, class: "PROVEN" }];
 const paid = (next = []) => ({ legs: [{ id: "p", provider: "eth", ref: HASH, status: "PAID_OUT", class: "PROVEN", evidence: [] }], edges: [], evidence, claims: [], identifiers: SHARED, next });
-const stub = (over) => ({ now: NOW, adapters: { order: async () => paid(), transfer: async () => ({ notFound: "no" }), evmTx: async () => paid(), status: async () => null, ...over } });
+const stub = (over) => ({ now: NOW, adapters: { order: async () => paid(), transfer: async () => ({ notFound: "no" }), evmTx: async () => paid(), status: async () => null, payoutSide: async () => null, ...over } });
 
 test("following a payout adds its facts to the same leg", async () => {
   const ctx = stub({
@@ -131,7 +131,7 @@ test("a pasted payout transaction leads to its order when the bridge's record na
   });
   const r = await openCase(PAYOUT_TX, ctx);
   assert.ok(r.verdict, r.error);
-  assert.deepEqual(asked, [PAYOUT_TX, NEAR_TX]);
+  assert.deepEqual(asked, [NEAR_TX]);
   assert.equal(r.verdict.journey, "PAID_OUT");
 });
 test("a pasted payout transaction with no record back gets plain words, not an error", async () => {
@@ -148,4 +148,15 @@ test("an unknown transaction that isn't a payout keeps its first answer", async 
 test("a many-swaps answer is a notice, not bad input", async () => {
   const r = await openCase("gnk-usd.near", stub({ order: async () => ({ notFound: "gnk-usd.near has many swaps", notice: true }) }));
   assert.equal(r.notice, true);
+});
+test("a payout is recognised before the slow deposit search, so a busy or failing search can't hide it", async () => {
+  const dead = { legs: [{ id: "f", provider: "near", ref: PAYOUT_TX, status: "LOOKUP_FAILED", class: "UNKNOWN", evidence: [] }], edges: [], evidence: [], claims: [], identifiers: [], next: [] };
+  const notice = "That's the payout transaction (money arriving).";
+  const r = await openCase(PAYOUT_TX, stub({ order: async () => dead, payoutSide: async () => ({ notice }) }));
+  assert.equal(r.error, notice);
+  assert.equal(r.notice, true);
+});
+test("a transaction that isn't a payout still gets the deposit search", async () => {
+  const r = await openCase(PAYOUT_TX, stub({ payoutSide: async () => null }));
+  assert.equal(r.verdict.journey, "PAID_OUT");
 });
