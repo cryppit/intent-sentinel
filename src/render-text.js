@@ -5,7 +5,7 @@ export const STATUS_WORDS = {
   DEPOSIT_CONFIRMED: "deposit confirmed", DEPOSIT_NOT_FOUND: "no deposit found", CREDITED: "credited", CREDIT_PENDING: "credit pending",
   HELD: "held", PAID_OUT: "paid out", REFUNDED: "refunded", CONTRACT_FORWARDED: "forwarded by a contract",
   INGRESS_CONFIRMED_EGRESS_UNKNOWN: "received, payout unknown", INITIALISED: "started, not finished", SIGNED: "signed, not finished",
-  FINALISED: "finished", NOT_VISIBLE: "confidential", LOOKUP_FAILED: "could not be read",
+  FINALISED: "finished", NOT_VISIBLE: "settled privately", LOOKUP_FAILED: "could not be read",
   PAYOUT_UNSEEN: "payout not found", NOT_PROVEN: "claimed, not proven",
 };
 

@@ -75,7 +75,7 @@ function endLeg({ w, payout }, report, at) {
 }
 
 function openLeg(report, lastAt) {
-  if (report.verdict === "confidential") return { id: "private", provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", custody: "not visible" };
+  if (report.verdict === "confidential") return { id: "private", provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", custody: "not visible", at: lastAt };
   if (report.verdict === "stuck") return { id: "held", provider: "near-intents", status: "HELD", class: "PROVEN", custody: "intents.near", window: { dueBy: lastAt } };
   if (report.verdict === "in_progress") return { id: "held", provider: "near-intents", status: "HELD", class: "PROVEN", custody: "intents.near" };
   return null;
@@ -92,6 +92,10 @@ export function traceToLegs(report, now) {
     legs.push({ id: "credit", provider: "near-intents", ref: report.deposits[0].tx, status: "CREDITED", class: "PROVEN", custody: "intents.near", evidence: report.deposits.map((d) => `near:${d.tx}`), ...ledgerBalance(report) });
   }
   const ends = report.verdict === "confidential" ? [] : endsOf(report);
+  // The order went into Confidential Intents and came back out: the exchange in between is private by design.
+  if (report.verdict !== "confidential" && report.flags.some((f) => f.kind === "confidential" && /came back/.test(f.detail ?? ""))) {
+    legs.push({ id: "private", provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", custody: "not visible", facts: { privateRoundTrip: true } });
+  }
   legs.push(...ends.map((e) => endLeg(e, report, lastAt)));
   const open = openLeg(report, lastAt);
   if (open) legs.push(open);

@@ -154,3 +154,23 @@ test("an unseen payout with no time is not called on its way", () => {
   const r = evaluate(caseWith([credited, { provider: "bsc", status: "PAYOUT_UNSEEN", class: "UNKNOWN" }]), AT);
   assert.ok(!r.findings.includes("PAYOUT_PENDING"));
 });
+
+// Since 27 Oct 2026 1Click swaps settle on NEAR's private shard. A private step is never guessed at, and it doesn't
+// undo a payout proven after it.
+const privateStep = (m) => ({ provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", ...(m === undefined ? {} : { at: minsBefore(m) }) });
+test("a private step that came back out to a proven payout doesn't reopen the case", () => {
+  const r = evaluate(caseWith([credited, privateStep(30), { provider: "tron", status: "PAID_OUT", at: AT }]), AT);
+  assert.equal(r.journey, "PAID_OUT");
+  assert.equal(r.nextAction.party, "none");
+});
+test("a private step minutes old is still being settled by NEAR Intents", () => {
+  const r = evaluate(caseWith([credited, privateStep(5)]), AT);
+  assert.equal(r.nextAction.party, "near-intents");
+  assert.match(r.nextAction.question, /privately/);
+  assert.match(r.nextAction.question, /check again/i);
+});
+test("a private step that never came back sends the owner to NEAR Intents support", () => {
+  const r = evaluate(caseWith([credited, privateStep(180)]), AT);
+  assert.equal(r.nextAction.party, "user");
+  assert.match(r.nextAction.question, /NEAR Intents support/);
+});

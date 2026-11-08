@@ -11,6 +11,9 @@ const refOf = (leg) => shortRef(leg.ref ?? leg.provider);
 const settled = (c) => c.legs.some((l) => isProven(l) && (l.status === "PAID_OUT" || l.status === "REFUNDED"));
 const leg = (c, test) => c.legs.find(test) ?? null;
 
+const PRIVATE_FRESH_MS = 3600_000;
+const privateFresh = (l, at) => Boolean(l?.at) && when(at) - when(l.at) <= PRIVATE_FRESH_MS;
+
 const RULES = [
   {
     code: "SOURCE_NOT_SEEN",
@@ -122,11 +125,19 @@ const RULES = [
     ask: () => [],
   },
   {
+    // A private step that came back out to a proven payout is done. One that is minutes old is still being settled by
+    // NEAR Intents. One that never came back can only be explained by NEAR Intents or the signed-in owner.
     code: "NOT_VISIBLE",
-    fires: (c) => leg(c, (l) => l.class === "NOT_VISIBLE"),
-    party: () => "user",
-    question: () => "This leg is confidential. Only its owner can read it.",
-    ask: () => ["the owner's own view of this leg"],
+    fires: (c, at) => {
+      const hidden = settled(c) ? null : leg(c, (l) => l.class === "NOT_VISIBLE");
+      return hidden && { ...hidden, fresh: privateFresh(hidden, at) };
+    },
+    party: (c, l) => (l.fresh ? "near-intents" : "user"),
+    question: (c, l) =>
+      l.fresh
+        ? "This step is being settled privately on NEAR's private shard right now. The payout usually follows within minutes. Check again shortly."
+        : "This step settled privately on NEAR's private shard, so only NEAR Intents and you, signed in to NEAR Intents, can see it. Ask NEAR Intents support what happened after it.",
+    ask: (c, l) => (l.fresh ? ["the same ID again in a few minutes"] : ["this order's status from NEAR Intents support", "your own signed-in view of this step"]),
   },
 ];
 

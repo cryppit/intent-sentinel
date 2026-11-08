@@ -97,3 +97,10 @@ test("a pasted busy account keeps the wallet-account answer", async () => {
   const r = await readOrder("solver-priv-liq.near", { now: NOW, check: busy("solver-priv-liq.near") });
   assert.match(r.notFound, /wallet account/);
 });
+const roundTripReport = { ...paidReport, flags: [{ kind: "confidential", detail: "part of the order went through Confidential Intents and came back; the withdrawal after it is public" }] };
+test("a swap that settled privately shows the private step between the credit and the payout", () => {
+  const l = legs(roundTripReport);
+  assert.deepEqual(l.map((x) => x.status), ["DEPOSIT_CONFIRMED", "CREDITED", "NOT_VISIBLE", "PAID_OUT"]);
+  assert.equal(l.at(-1).class, "PROVEN");
+});
+test("a private step carries the time it was last seen, so its age can be judged", () => assert.ok(legs(privateReport).at(-1).at));
