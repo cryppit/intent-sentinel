@@ -109,7 +109,7 @@ near contract call-function as-read-only sentinel.cryppit.testnet get_pin json-a
 
 ## How NEAR fits
 
-- It reads NEAR Intents orders on `intents.near`, through FastNEAR and public RPCs.
+- It reads NEAR Intents orders on `intents.near`, through FastNEAR and public RPCs. A payout through the HOT bridge to an EVM chain is proven from chain data: the nonce HOT logs when it burns the token on NEAR, `usedNonces` on HOT's payout contract, and the `withdraw` call itself, even when it's nested inside another call. HOT payouts to TON, Stellar and Solana aren't proven yet, so they stay unproven.
 - It reads Omni bridge transfers from the bridge's indexer, which can lag, then checks the chain: the destination contract on EVM chains, or the finishing transaction on Solana, Bitcoin and NEAR. Without a chain read, a status stays `REPORTED`.
 - Each day's evidence packets form an RFC 6962 Merkle root that can be pinned on NEAR. With a packet and its proof from `node cli.js prove`, anyone can check by a public view call that it existed unchanged that day: `node cli.js verify`. A changed verdict or changed evidence fails.
 - An agent can read a verdict before it retries a swap or re-sends funds.
