@@ -1,0 +1,241 @@
+{
+ "source": "recorded 2026-11-08 from tx.main.fastnear.com and bsc-rpc.publicnode.com (public records)",
+ "nearTx": "2srP55JNGt59TyWNtFb62yfjndkYpfxtZ534At2irt3B",
+ "near": {
+  "transaction": {
+   "hash": "2srP55JNGt59TyWNtFb62yfjndkYpfxtZ534At2irt3B"
+  },
+  "receipts": [
+   {
+    "execution_outcome": {
+     "block_height": 223580650,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [
+       "EVENT_JSON:{\"standard\":\"dip4\",\"version\":\"0.4.3\",\"event\":\"mt_withdraw\",\"data\":[{\"intent_hash\":\"5GLwbkzTt97hd38C4iMcH9djyJuuRU6qbmNFffsHJPFc\",\"account_id\":\"87e9d572cf8f8718c88444d704222115252943d0fa1554993109e8fa0208b448\",\"token\":\"v2_1.omni.hot.tg\",\"receiver_id\":\"bridge-refuel.hot.tg\",\"token_ids\":[\"56_11111111111111111111\"],\"amounts\":[\"148830661787248\"],\"msg\":\"{\\\"receiver_id\\\":\\\"XQrwafN5g6suVtS4nwKvzhZwxAr\\\",\\\"amount_native\\\":\\\"13000000000000\\\",\\\"block_number\\\":132347655}\",\"min_gas\":\"91300000000000\"}]}",
+       "EVENT_JSON:{\"standard\":\"dip4\",\"version\":\"0.4.3\",\"event\":\"intents_executed\",\"data\":[{\"intent_hash\":\"5GLwbkzTt97hd38C4iMcH9djyJuuRU6qbmNFffsHJPFc\",\"account_id\":\"87e9d572cf8f8718c88444d704222115252943d0fa1554993109e8fa0208b448\",\"nonce\":\"Vij2xgAlKBKzQN1z4yQ77xhYUX9ktA3DKZ/DHAdCs7M=\"}]}",
+       "EVENT_JSON:{\"standard\":\"nep245\",\"version\":\"1.0.0\",\"event\":\"mt_burn\",\"data\":[{\"owner_id\":\"87e9d572cf8f8718c88444d704222115252943d0fa1554993109e8fa0208b448\",\"token_ids\":[\"nep245:v2_1.omni.hot.tg:56_11111111111111111111\"],\"amounts\":[\"148830661787248\"],\"memo\":\"withdraw\"}]}"
+      ],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "GAPKKxQS2PMJVAyQpXQv141VQNhVKBvy4GwPzYvo9KAX"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580651,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "AQmfuQ9x2ifDyH7n1rmLLnRMjJKTHakyjmUHTeXEzwcr"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580651,
+     "outcome": {
+      "executor_id": "v2_1.omni.hot.tg",
+      "logs": [
+       "EVENT_JSON:{\"standard\":\"nep245\",\"version\":\"1.0.0\",\"event\":\"mt_transfer\",\"data\":[{\"old_owner_id\":\"intents.near\",\"new_owner_id\":\"bridge-refuel.hot.tg\",\"token_ids\":[\"56_11111111111111111111\"],\"amounts\":[\"148830661787248\"]}]}"
+      ],
+      "status": {
+       "SuccessReceiptId": "64XFVwUYbgRcew8KWnfEa5VvsKNc4katihonHC9bxVXu"
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "DoqEfuaZPxGcafHWNJj72d8LFZw2jVMM6h4SbSzpLxtC"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580652,
+     "outcome": {
+      "executor_id": "bridge-refuel.hot.tg",
+      "logs": [
+       "prepaid_gas: NearGas { inner: 132850758188902 }"
+      ],
+      "status": {
+       "SuccessValue": "WyIwIl0="
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "HRerWDqD36npixamc2JfeN8hD1sQL2Zt7AMD21yrkbzP"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580652,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "FA1S5U8qQUVAGDA6Z7HEvfGvzNpYWeZ1mBnzAagZ6UeX"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580653,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "G7WXFF1NnrM6AiGb7c38pMdyq2pHGFjTjVu62c241bap"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580653,
+     "outcome": {
+      "executor_id": "v2_1.omni.hot.tg",
+      "logs": [
+       "EVENT_JSON:{\"standard\":\"nep245\",\"version\":\"1.0.0\",\"event\":\"mt_burn\",\"data\":[{\"owner_id\":\"bridge-refuel.hot.tg\",\"token_ids\":[\"56_11111111111111111111\"],\"amounts\":[\"135830661787248\"],\"memo\":\"1794120666000001860912\"}]}"
+      ],
+      "status": {
+       "SuccessValue": "IjE3OTQxMjA2NjYwMDAwMDE4NjA5MTIi"
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "6QHXEwUiJTahmANTzNrrHYZo9fn7LCVpwY7JW6XEaDMn"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580653,
+     "outcome": {
+      "executor_id": "v2_1.omni.hot.tg",
+      "logs": [],
+      "status": {
+       "SuccessValue": "WyIxNDg4MzA2NjE3ODcyNDgiXQ=="
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "64XFVwUYbgRcew8KWnfEa5VvsKNc4katihonHC9bxVXu"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580654,
+     "outcome": {
+      "executor_id": "bridge-refuel.hot.tg",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "4y6DxKCDTGAoGdBKM98Zn5v1pJio8a4q81oYCX8GjiDj"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580654,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "57iYe9tq7W1H3tpwEbcdzc7ChGhCbvCSt3ELeKmd44qd"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580654,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "GkNYBSD7D16iPW19EqsTr1pQ1UW8Hcp4bV8vcM9K7ZN7"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580654,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": "WyIxNDg4MzA2NjE3ODcyNDgiXQ=="
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "DjdB98CTiKH2wvVtTha3SNYQ7CMZ8B9SZYrfiF4hUcMf"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580655,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "PASHLtK38Rh1LZWN6AVB56E7PEKqXAic3mYrUcKCqdd"
+    }
+   },
+   {
+    "execution_outcome": {
+     "block_height": 223580655,
+     "outcome": {
+      "executor_id": "intents.near",
+      "logs": [],
+      "status": {
+       "SuccessValue": ""
+      }
+     }
+    },
+    "receipt": {
+     "receipt_id": "H4dJcjqG3NTi7akQN3dY3bb5gGwunsKLG99FWkPXMdai"
+    }
+   }
+  ]
+ },
+ "bscTx": {
+  "hash": "0x27e1664115a6e49ce50428bb65d00c582fdab69e2772beeb2036183a6addbaf4",
+  "to": "0x0000000071727de22e5e9d8baf0edac6f37da032",
+  "input": "0x765e827f00000000000000000000000000000000000000000000000000000000000000400000000000000000000000008b2efb5293326e1766cb5d0855032f150a72b705000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000008c66fdf26b83c7bc6054ca425cd4cb2be396e8670000000000000000000061426d08117d5c05300000000001000000000000000000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000152c20000000000000000000000000002325b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003400000000000000000000000000000000000000000000000000000000000000360000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001c4b61d27f6000000000000000000000000233c5370ccfb3cd7409d9a3fb98ab94de94cb4cd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000124d9e7c316000000000000000000000000000000000000000000000061426d08117d5c0530000000000000000000000000000000000000000000000000000000000000000000000000000000000000000025a2d8e5fc10d8a85523b37ca98fbaaf7bc6372700000000000000000000000000000000000000000000000000007b898a586e7000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000041e0a84f50336986a736700c477d46c0201a26c546c60bf1d1690272a915605c465ed2aa57a5d1d1a120bc0a7ac8fa1a9442c4be9b7279921e4137f7cb03205e7d1b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000043ff00b5e2253aeb4b43376f67960f0922a9268b5b2128cb60f4fb2dd730bfa6560ae364aad121db342ac5f49821011646d8f8eb928ca517d7bd485c04bc92d248922f1b0000000000000000000000000000000000000000000000000000000000",
+  "blockNumber": "0x7e37729"
+ },
+ "bscReceipt": {
+  "status": "0x1",
+  "blockNumber": "0x7e37729"
+ }
+}

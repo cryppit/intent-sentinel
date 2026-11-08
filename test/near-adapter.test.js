@@ -44,7 +44,7 @@ test("identifiers don't depend on how the order was found", () => {
   assert.ok(a.includes("order.example") && a.includes("NEARCREDIT") && a.includes("0xpayout"));
 });
 test("an EVM payout is followed", () =>
-  assert.deepEqual(traceToLegs(paidReport, NOW).next, [{ kind: "evm-tx", chain: "eth", value: "0xpayout" }]));
+  assert.deepEqual(traceToLegs(paidReport, NOW).next, [{ kind: "evm-tx", chain: "eth", value: "0xpayout", recipient: "0xdest" }]));
 test("an inferred payout is not followed as if proven", () => assert.deepEqual(traceToLegs(matchedReport, NOW).next, []));
 test("a dead source gives a failed leg, not a throw", async () => {
   const r = await readOrder("x", { now: NOW, check: async () => { throw new TypeError("fetch failed"); } });

@@ -62,7 +62,7 @@ export async function openCase(raw, ctx) {
     const link = queue.shift();
     if (asked.has(link.value)) continue;
     asked.add(link.value);
-    const found = await a.evmTx(link.chain, link.value, ctx);
+    const found = await a.evmTx(link.chain, link.value, ctx, link.recipient);
     absorb(caseData, found, true);
     queue.push(...found.next);
   }

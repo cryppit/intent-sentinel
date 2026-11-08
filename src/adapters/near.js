@@ -3,6 +3,7 @@
 // changes the token. Where it can't be checked, the case says so rather than staying silent.
 import { checkOrderWithFallback, EVM_RPC, fastnearClient, fastnearUnavailable, payingWithdrawal, publicOriginClient, publicPayoutClient, searchPayout } from "../../vendor/wms-core.mjs";
 import { failedRead } from "../net.js";
+import { proveHotPayout } from "./hot.js";
 import { SOLANA_RPCS, withSolanaFallback } from "./solana.js";
 
 const iso = (ns) => (ns == null ? null : new Date(Number(BigInt(ns) / 1_000_000n)).toISOString());
@@ -105,7 +106,7 @@ export function traceToLegs(report, now) {
     claims: [],
     identifiers: [...new Set(ids.filter(Boolean))],
     warnings: report.flags.filter((f) => f.kind in WARNINGS).map(({ kind, detail }) => ({ kind, party: WARNINGS[kind], detail })),
-    next: follow.map(({ payout }) => ({ kind: "evm-tx", chain: short(payout.chain), value: payout.tx })),
+    next: follow.map(({ payout }) => ({ kind: "evm-tx", chain: short(payout.chain), value: payout.tx, ...(payout.destination ? { recipient: payout.destination } : {}) })),
   };
 }
 
@@ -119,7 +120,16 @@ async function liveCheck(raw, ctx) {
   const paying = payingWithdrawal(report);
   const others = report.withdrawals.filter((w) => w !== paying && !(w.returned || w.refused || w.bounced));
   const found = await Promise.all(others.map((w) => searchPayout(w, payouts, nowNs).catch(() => ({ status: "unverified" }))));
-  return { ...report, otherPayouts: Object.fromEntries(others.map((w, i) => [w.tx, found[i]])) };
+  return withHotProof({ ...report, otherPayouts: Object.fromEntries(others.map((w, i) => [w.tx, found[i]])) }, { fetch: f });
+}
+
+/** HOT payouts the tracer couldn't see (native coins, or a withdraw call nested in another call), proven from chain data. */
+export async function withHotProof(report, opts = {}) {
+  const paying = payingWithdrawal(report);
+  const payout = paying && report.payout ? await proveHotPayout(paying, report.payout, opts) : report.payout;
+  const others = { ...(report.otherPayouts ?? {}) };
+  for (const w of report.withdrawals) if (others[w.tx]) others[w.tx] = await proveHotPayout(w, others[w.tx], opts);
+  return { ...report, payout, otherPayouts: others };
 }
 
 /** A broken source, not an answer about the order: these must never read as "no such order". */

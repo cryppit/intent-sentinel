@@ -39,3 +39,10 @@ test("a hash no node knows gives a failed leg", async () =>
   assert.equal((await readTx("eth", HASH, stubCtx({ receipt: null }))).legs[0].status, "LOOKUP_FAILED"));
 test("an unknown chain gives a failed leg", async () =>
   assert.equal((await readTx("nowhere", HASH, stubCtx())).legs[0].status, "LOOKUP_FAILED"));
+test("a native payout made inside another contract's call uses the known receiver, not the call's target", async () => {
+  const receipt = { status: "0x1", to: "0x" + "e".repeat(40), blockNumber: "0x10", logs: [] };
+  const f = (await readTx("bsc", HASH, stubCtx({ receipt, code: "0x60" }), "0x" + "F".repeat(40))).legs[0].facts;
+  assert.equal(f.recipient, "0x" + "f".repeat(40));
+});
+test("a known receiver never overrides a token transfer's recipient", async () =>
+  assert.equal((await readTx("eth", HASH, stubCtx(), "0x" + "9".repeat(40))).legs[0].facts.recipient, "0x" + "2".repeat(40)));

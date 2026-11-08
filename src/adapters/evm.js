@@ -26,12 +26,13 @@ function transfersIn(receipt) {
     .map((l) => ({ token: l.address.toLowerCase(), from: addr(l.topics[1]), to: addr(l.topics[2]), amount: BigInt(l.data).toString() }));
 }
 
-export async function readTx(chain, hash, ctx) {
+/** `receiver` is the payout's known destination: used only when no token moved, e.g. native coins paid inside another call. */
+export async function readTx(chain, hash, ctx, receiver) {
   try {
     const receipt = await rpc(chain, "eth_getTransactionReceipt", [hash], ctx);
     if (!receipt) return failedRead(chain, hash, "no node knows this transaction", ctx.now);
     const transfers = transfersIn(receipt);
-    const recipient = transfers.at(-1)?.to ?? receipt.to?.toLowerCase();
+    const recipient = transfers.at(-1)?.to ?? receiver?.toLowerCase() ?? receipt.to?.toLowerCase();
     const code = await rpc(chain, "eth_getCode", [recipient, "latest"], ctx);
     const ok = receipt.status === "0x1";
     return {
