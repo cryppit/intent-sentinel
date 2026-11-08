@@ -3,6 +3,7 @@
 // on an EVM chain checks the MPC signature and pays only the signed recipient, so anyone may send it.
 import { publicPayoutClient } from "../../vendor/wms-core.mjs";
 import { failedRead, getJson, postJson } from "../net.js";
+import { readTx } from "./evm.js";
 import { solanaTransaction } from "./solana.js";
 
 const TRANSFERS = "https://mainnet.api.bridge.nearone.org/api/v4/transfers/transfer";
@@ -22,8 +23,12 @@ export function finishStep({ status, origin, dest }) {
   return { step: "fin_transfer", by: "omni-relayer" };
 }
 
-/** The tracer's chain key for each destination whose bridge contract records a finished transfer. */
-const CONTRACT_CHAIN = { Eth: "eth", Base: "base", Arb: "arb", Bnb: "bsc", Pol: "pol", Avax: "avax", HlEvm: "hlevm", Abs: "abs", Strk: "starknet" };
+/** The tracer's chain key for each destination whose bridge contract records a finished transfer. Avalanche and
+ * Abstract aren't here: no Omni contract is known for them, so they're read through their transactions instead. */
+const CONTRACT_CHAIN = { Eth: "eth", Base: "base", Arb: "arb", Bnb: "bsc", Pol: "pol", HlEvm: "hlevm", Strk: "starknet" };
+/** Destination chains whose transactions are read through the EVM reader. */
+const EVM_CHAIN = { Eth: "eth", Base: "base", Arb: "arb", Bnb: "bsc", Pol: "pol", Avax: "avax", HlEvm: "hlevm", Abs: "abs" };
+const bare = (address) => String(address ?? "").replace(/^[a-z]+:/i, "").toLowerCase();
 
 /** true or false from the destination contract; null if it can't be read; undefined if there's no contract to ask. */
 async function paidOnContract(t, ctx) {
@@ -53,19 +58,35 @@ async function onChain(chain, tx, ctx) {
     }
     if (chain === "Btc") return (await getJson(`${MEMPOOL}/tx/${tx}/status`, ctx)).confirmed === true;
     if (chain === "Near") return await nearTxSucceeded(tx, ctx);
+    if (EVM_CHAIN[chain]) return (await readTx(EVM_CHAIN[chain], tx, ctx)).legs?.[0]?.class === "PROVEN";
   } catch {
     return false;
   }
   return false;
 }
 
+/** A fast relayer's payout: its transaction succeeded and moved a token to the recipient. Native-coin payouts can't be
+ * matched to the recipient from the receipt alone, so they stay reported. */
+async function fastPaid(t, fast, ctx) {
+  const chain = EVM_CHAIN[fast.chain];
+  if (chain) {
+    const leg = (await readTx(chain, fast.transaction_hash, ctx).catch(() => null))?.legs?.[0];
+    return leg?.class === "PROVEN" && (leg.facts?.transfers ?? []).some((x) => x.to === bare(t.recipient));
+  }
+  return onChain(fast.chain, fast.transaction_hash, ctx);
+}
+
 async function transferToCase(t, ctx) {
   const id = t.transfer_id;
   const ref = `${id.chain}:${id.nonce ?? id.id ?? "?"}`;
-  const paid = await paidOnContract(t, ctx);
+  // A fast relayer pays the recipient before the bridge finishes; the bridge's own record repays the relayer later. The
+  // recipient is paid either way, so nobody needs to finish anything for them.
+  const fast = t.fast_finalised && t.fast_finalised.chain !== "Near" && t.fast_finalised.transaction_hash ? t.fast_finalised : null;
+  const fastProven = fast ? await fastPaid(t, fast, ctx) : false;
+  const paid = fast ? undefined : await paidOnContract(t, ctx);
   const contractRead = paid === true || paid === false;
-  const status = paid === true || isFinal(t.status) ? "FINALISED" : /signed/i.test(t.status) ? "SIGNED" : "INITIALISED";
-  const confirmed = status === "FINALISED" && !contractRead && (await onChain(t.destination_chain, destinationTx(t), ctx));
+  const status = fast || paid === true || isFinal(t.status) ? "FINALISED" : /signed/i.test(t.status) ? "SIGNED" : "INITIALISED";
+  const confirmed = fast ? fastProven : status === "FINALISED" && !contractRead && (await onChain(t.destination_chain, destinationTx(t), ctx));
   const tx = t.initialised?.transaction_hash;
   const originProven = await onChain(t.initialised?.chain, tx, ctx);
   // An unpaid contract proves it hasn't been paid. It says nothing about the steps before that, so those need their own read.
@@ -74,13 +95,14 @@ async function transferToCase(t, ctx) {
   const agrees = confirmed || (contractRead && (status === "FINALISED" ? paid : !paid && stepsProven));
   const finish = status === "FINALISED" ? null : finishStep({ status: t.status, origin: t.origin_chain, dest: t.destination_chain });
   const evidence = tx ? [{ id: `omni:${tx}`, source: t.initialised.chain.toLowerCase(), kind: "tx", ref: tx, observedAt: iso(t.initialised.timestamp_seconds), class: originProven ? "PROVEN" : "REPORTED" }] : [];
-  const dest = destinationTx(t);
-  if (confirmed) evidence.push({ id: `omni:${dest}`, source: t.destination_chain.toLowerCase(), kind: "tx", ref: dest, class: "PROVEN", ...(t.finalised?.timestamp_seconds ? { observedAt: iso(t.finalised.timestamp_seconds) } : { observedAt: ctx.now, undated: true }) });
+  const dest = fast ? fast.transaction_hash : destinationTx(t);
+  const destAt = (fast ?? t.finalised)?.timestamp_seconds;
+  if (confirmed) evidence.push({ id: `omni:${dest}`, source: t.destination_chain.toLowerCase(), kind: "tx", ref: dest, class: "PROVEN", ...(destAt ? { observedAt: iso(destAt) } : { observedAt: ctx.now, undated: true }) });
   evidence.push({ id: `read:omni:${ref}`, source: "omni", kind: "read", ref, observedAt: ctx.now, class: agrees ? "PROVEN" : "REPORTED" });
   const legs = [{
     id: `omni:${ref}`, provider: "omni", ref, status, class: agrees ? "PROVEN" : "REPORTED", custody: status === "FINALISED" ? "recipient" : "omni bridge", evidence: tx ? [`omni:${tx}`] : [],
     ...(finish ? { finish } : {}),
-    facts: { token: t.token_id, amount: t.amount, fee: t.fee, nativeFee: t.native_fee, from: t.origin_chain, to: t.destination_chain, originProven },
+    facts: { token: t.token_id, amount: t.amount, fee: t.fee, nativeFee: t.native_fee, from: t.origin_chain, to: t.destination_chain, originProven, ...(fast ? { fast: true } : {}) },
   }];
   if (paid === null) legs.push({ id: `contract:${ref}`, provider: `${t.destination_chain} bridge contract`, status: "LOOKUP_FAILED", class: "UNKNOWN", evidence: [] });
   return { legs, edges: [], evidence, claims: [], identifiers: [ref.toLowerCase(), tx].filter(Boolean), next: [] };

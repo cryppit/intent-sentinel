@@ -168,3 +168,48 @@ test("a Btc finish with no chain time is marked undated", async () => {
   const r = await readTransfer("near:7", ctxFor({ transfer: v4({ destination_chain: "Btc", status: "Settled", utxo_winning_tx_hash: "DEST", finalised: null }) }));
   assert.equal(r.evidence.find((e) => e.ref === "DEST").undated, true);
 });
+
+// EVM reads for the destination chain: a receipt with an optional ERC-20 Transfer to the recipient.
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const word = (a) => "0x" + a.replace(/^0x/, "").padStart(64, "0");
+const RECIPIENT = "0x" + "b".repeat(40);
+const evmCtx = (transfer, { paid = false, payTo = RECIPIENT, ok = true } = {}) => ({
+  now: NOW,
+  omniPaid: async () => paid,
+  fetch: async (url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : null;
+    if (body?.method === "eth_getTransactionReceipt") {
+      const logs = payTo ? [{ address: "0x" + "c".repeat(40), topics: [TRANSFER_TOPIC, word("0x" + "1".repeat(40)), word(payTo)], data: word("13") }] : [];
+      return res({ jsonrpc: "2.0", id: body.id, result: { status: ok ? "0x1" : "0x0", to: "0x" + "c".repeat(40), blockNumber: "0x10", logs } });
+    }
+    if (body?.method === "eth_getCode") return res({ jsonrpc: "2.0", id: body.id, result: "0x" });
+    if (String(url).includes("fastnear")) return res({ transactions: [nearOk] });
+    return res({ transfers: [transfer] });
+  },
+});
+const fast = (over = {}) => v4({ status: "Signed", recipient: `eth:${RECIPIENT}`, fast_finalised: { transaction_hash: "0xfast", chain: "Eth", timestamp_seconds: 1790590683 }, ...over });
+
+test("an Avalanche transfer isn't a failed read just because we know no contract there", async () => {
+  const r = await readTransfer("near:7", evmCtx(v4({ destination_chain: "Avax", status: "Signed" })));
+  assert.ok(!r.legs.some((l) => l.status === "LOOKUP_FAILED"));
+});
+test("a finished Avalanche transfer is proven by its destination transaction", async () => {
+  const t = v4({ destination_chain: "Avax", status: "Finalised", finalised: { transaction_hash: "0xdone", chain: "Avax", timestamp_seconds: 1790590683 } });
+  const r = await readTransfer("near:7", evmCtx(t));
+  assert.equal(r.legs[0].status, "FINALISED");
+  assert.equal(r.legs[0].class, "PROVEN");
+});
+test("a fast transfer that already paid the recipient never says a relayer must act", async () => {
+  const r = await readTransfer("near:7", evmCtx(fast()));
+  assert.equal(r.legs[0].status, "FINALISED");
+  assert.equal(r.legs[0].finish, undefined);
+  assert.equal(r.legs[0].class, "PROVEN");
+  assert.equal(r.legs[0].facts.fast, true);
+  assert.ok(r.evidence.some((e) => e.ref === "0xfast" && e.class === "PROVEN"));
+});
+test("a fast transfer whose transaction pays someone else is only reported", async () => {
+  const r = await readTransfer("near:7", evmCtx(fast(), { payTo: "0x" + "9".repeat(40) }));
+  assert.equal(r.legs[0].status, "FINALISED");
+  assert.equal(r.legs[0].class, "REPORTED");
+  assert.equal(r.legs[0].finish, undefined);
+});
