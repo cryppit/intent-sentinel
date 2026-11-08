@@ -44,12 +44,13 @@ You should see this, and exit code 2, meaning someone must act:
 
 ```text
 Next to act: an Omni relayer.
-Only an Omni relayer can run sign_transfer. Will it run for Near:563760?
+Only an Omni relayer (the bridge's operator) can approve Near:563760 for payout. Will it?
+What to ask an Omni relayer: whether they will process this transfer, and when.
 
-  omni: started, not finished (proven)
+  Omni bridge: started, not finished (proven)
 ```
 
-This is [Near-One/omni-bridge #665](https://github.com/Near-One/omni-bridge/issues/665): 0.02 ETH sent with `fee: "0"`. `sign_transfer` is `#[trusted_relayer]`, so the sender can't finish it.
+This is [Near-One/omni-bridge #665](https://github.com/Near-One/omni-bridge/issues/665): 0.02 ETH sent with `fee: "0"`. The approval step (`sign_transfer`) is `#[trusted_relayer]`, so only the bridge's relayer can run it and the sender can't finish it.
 
 **3. Replay one where nothing is left to do**
 
@@ -57,7 +58,7 @@ This is [Near-One/omni-bridge #665](https://github.com/Near-One/omni-bridge/issu
 node cli.js replay refund-5btc
 ```
 
-You should see `Nobody needs to act`, `amounts on credit: balance`, and exit code 0. The NEAR ledger balances exactly: 500,014,578 in and out.
+You should see `Nobody needs to act`, `Amounts match at NEAR Intents`, and exit code 0. The NEAR ledger balances exactly: 500,014,578 in and out.
 
 **4. Read a case live from public chains**
 
@@ -65,7 +66,7 @@ You should see `Nobody needs to act`, `amounts on credit: balance`, and exit cod
 node cli.js check Near:563760
 ```
 
-You should see the same answer as step 2, unless the transfer has moved since. Run it twice with `--json` and the verdict hash matches, because a verdict's time comes from the chain and not the clock. A new chain event or a 1Click claim changes the hash. A source that can't be read gives exit code 3 and `We can't give an answer yet`, never a clean verdict.
+You should see the same answer as step 2, unless the transfer has moved since. Run it twice with `--json` and the fingerprint matches, because a verdict's time comes from the chain and not the clock. A new chain event or a 1Click claim changes the fingerprint. A source that can't be read gives exit code 3 and `We can't give an answer yet`, never a clean verdict.
 
 **5. Run the tests**
 

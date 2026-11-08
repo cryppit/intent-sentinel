@@ -49,7 +49,18 @@ function coin(stop) {
   return el("span", { class: "coin" }, face);
 }
 
-const stamp = (stop) => (stop.class ? el("span", { class: `cls c-${stop.class.toLowerCase()}` }, stop.classLabel) : el("span", { class: "cls c-ahead" }, "Not seen"));
+// Who a party is, in one line, shown under the headline. And where the money was last seen, in words.
+const WHO_IS = {
+  "omni-relayer": "An Omni relayer is the bridge's operator. Only it can run this step.",
+  "near-intents": "NEAR Intents is the NEAR service that holds your coins between the steps of a swap.",
+  integrator: "Your app is the wallet or website you swapped through.",
+  anyone: "This step is open: anyone, including you, can do it.",
+};
+const CUSTODY = { bridge: "with the bridge", "intents.near": "held by NEAR Intents", recipient: "at the receiving address", "refund address": "back at your refund address", "omni bridge": "with the Omni bridge" };
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dayWords = (iso) => `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+
+const stamp = (stop) => (stop.class ? el("span", { class: `cls c-${stop.class.toLowerCase()}` }, stop.classLabel) : el("span", { class: "cls c-ahead" }, "Not reached"));
 
 function stopNode(stop, i) {
   const node = el("li", { class: `stop ${stop.state}${stop.failed ? " failed" : ""}` }, coin(stop), el("b", {}, stop.name), el("span", { class: "lbl" }, stop.label), stamp(stop));
@@ -122,9 +133,10 @@ function drawStage(view, picked, caseId, openFile) {
   track.classList.toggle("many", view.stops.length > 6);
   rig.style.setProperty("--n", view.stops.length);
   board.replaceChildren(...view.parties.map(partyNode));
-  const words = el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, view.tone === "unknown" ? "No answer yet" : "Next move"), el("p", { class: "a-who" }, picked.headline));
+  const words = el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, view.tone === "unknown" ? "No answer yet" : "Who acts next"), el("p", { class: "a-who" }, picked.headline));
   if (picked.question) words.append(el("p", { class: "a-q" }, picked.question));
-  if (view.custody) words.append(el("span", { class: "held" }, `Last proven with: ${view.custody}`));
+  if (view.tone === "act" && WHO_IS[picked.party]) words.append(el("p", { class: "a-help" }, WHO_IS[picked.party]));
+  if (view.custody) words.append(el("span", { class: "held" }, `Your money was last seen: ${CUSTODY[view.custody] ?? view.custody}`));
   const more = el("button", { type: "button", class: "a-more" }, "See the full case →");
   more.addEventListener("click", () => {
     setPlaying(false);
@@ -142,7 +154,8 @@ function caseFile({ caseData, verdict }, view, stageData, note) {
   const packet = buildPacket(caseData, verdict);
   const head = el("div", { class: `verdict ${view.tone}` }, el("p", { class: "eyebrow" }, "Case file"), el("h2", {}, view.headline));
   if (view.question) head.append(el("p", { class: "question" }, view.question));
-  if (view.ask.length) head.append(el("p", { class: "ask" }, el("b", {}, "Ask them: "), view.ask.join("; ")));
+  if (view.ask.length) head.append(el("p", { class: "ask" }, el("b", {}, `${view.askWho}: `), `${view.ask.join("; ")}.`));
+  if (view.youCan.length) head.append(el("p", { class: "ask" }, el("b", {}, "What you can do: "), `${view.youCan.join("; or ")}.`));
   if (note) head.append(el("p", { class: "note" }, note));
 
   const steps = el("ol", { class: "steps" });
@@ -158,16 +171,16 @@ function caseFile({ caseData, verdict }, view, stageData, note) {
   for (const t of packet.timeline) {
     const url = explorerUrl(t.source, t.ref);
     const ref = url ? el("a", { href: url, target: "_blank", rel: "noreferrer" }, shortRef(t.ref)) : el("span", {}, shortRef(t.ref));
-    proof.append(el("li", {}, el("time", {}, t.at ? `${t.at.slice(0, 16).replace("T", " ")} UTC` : "No chain time"), el("span", { class: "who" }, placeName(t.source)), ref));
+    proof.append(el("li", {}, el("time", {}, t.at ? `${t.at.slice(0, 16).replace("T", " ")} UTC` : "No time on the blockchain record"), el("span", { class: "who" }, placeName(t.source)), ref));
   }
 
   const left = el("div", { class: "card" }, el("h3", {}, "What each step proves"), steps);
   if (notes.children.length) left.append(notes);
   const right = el("div", { class: "card" }, el("h3", {}, "Proof you can check yourself"));
-  right.append(packet.timeline.length ? proof : el("p", { class: "note" }, "No proven chain record to link yet."));
-  const save = el("button", { type: "button", class: "ghost" }, "Download evidence packet");
+  right.append(packet.timeline.length ? proof : el("p", { class: "note" }, "There's no blockchain record to link to yet."));
+  const save = el("button", { type: "button", class: "ghost" }, "Download the evidence (for support)");
   save.addEventListener("click", () => download(packet));
-  right.append(save, el("p", { class: "hash" }, `Fingerprint ${shortRef(verdict.outputHash)} · incident ${shortRef(verdict.incident)} · rules ${verdict.rulesVersion}`));
+  right.append(save, el("p", { class: "hash" }, `Fingerprint ${shortRef(verdict.outputHash)} · case ${shortRef(verdict.incident)} · rules v${verdict.rulesVersion}`));
   out.replaceChildren(head, el("div", { class: "cols" }, left, right));
 }
 
@@ -186,7 +199,7 @@ function setPlaying(on) {
 
 function busy(on) {
   go.disabled = on;
-  go.textContent = on ? "Reading…" : "Open case →";
+  go.textContent = on ? "Checking…" : "Check it →";
   toggle.disabled = on;
 }
 
@@ -200,7 +213,7 @@ async function loadRecorded(name) {
   return { caseData, verdict: await buildVerdict(caseData) };
 }
 
-const recordedNote = (caseData) => `Recorded from public chain data on ${caseData.evidence.at(-1).observedAt.slice(0, 10)}. The chain may have moved on since.`;
+const recordedNote = (caseData) => `Saved from public blockchain records on ${dayWords(caseData.evidence.at(-1).observedAt)}. Things may have changed since then: paste the ID to check it live.`;
 
 function present(result, caseId, note, full) {
   const view = caseView(result.verdict);
@@ -234,7 +247,7 @@ async function openRecorded(name, full) {
     present(result, name, recordedNote(result.caseData), full);
     if (full) out.scrollIntoView({ block: "start" });
   } catch {
-    if (mine === run) fail("That recorded case could not be loaded.");
+    if (mine === run) fail("We couldn't load this example. Refresh the page to try again.");
   }
 }
 
@@ -256,12 +269,12 @@ form.addEventListener("submit", async (e) => {
   hideCaseFile();
   stage.classList.add("reading");
   clearStage("unknown");
-  answer.replaceChildren(el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, "Reading"), el("p", { class: "a-who" }, "Reading the chains from your browser…"), el("p", { class: "a-q" }, "This can take up to a minute and a half.")));
+  answer.replaceChildren(el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, "Checking"), el("p", { class: "a-who" }, "Checking public blockchain records from your browser…"), el("p", { class: "a-q" }, "This can take up to 90 seconds.")));
   for (const b of CASE_BUTTONS) b.setAttribute("aria-pressed", "false");
   busy(true);
   bringStageIntoView();
   try {
-    const r = await withDeadline(openCase($("id").value, { now: new Date().toISOString() }), READ_LIMIT_MS, { error: "That took too long, so there's no answer. Please try again." });
+    const r = await withDeadline(openCase($("id").value, { now: new Date().toISOString() }), READ_LIMIT_MS, { error: "The public records took too long to answer, so we can't give an answer. Try again in a minute." });
     if (mine !== run) return;
     busy(false);
     if (r.error) return fail(r.error);
@@ -269,7 +282,7 @@ form.addEventListener("submit", async (e) => {
   } catch {
     if (mine !== run) return;
     busy(false);
-    fail("Something went wrong reading that case, so there's no answer. Please try again.");
+    fail("Something went wrong while checking, so we can't give an answer. Try again, or paste a different ID from the same swap.");
   }
 });
 

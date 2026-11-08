@@ -57,7 +57,7 @@ test("an unknown hash is a plain answer, not a failed source", async () => {
 
 test("no order behind an id is a plain answer, never a proven absence", async () => {
   const r = await readOrder("x", { now: NOW, check: async () => notFoundReport });
-  assert.match(r.notFound, /No NEAR Intents order/);
+  assert.match(r.notFound, /no NEAR Intents swap/);
 });
 test("every withdrawal gets its own leg", () =>
   assert.deepEqual(legs(twoPaidReport).slice(2).map((l) => [l.status, l.ref]), [["PAID_OUT", "0xpayout"], ["PAID_OUT", "0xpayout2"]]));
@@ -90,7 +90,7 @@ const busy = (account) => async () => { throw new Error(`${account} has 7730537 
 test("a pasted transaction signed by a busy solver account is explained, not called a wallet", async () => {
   const r = await readOrder("Agmwz426kYPRJ7j4m3gEyynjx9TSqYtWzYNNjBAwMFJW", { now: NOW, check: busy("solver-priv-liq.near") });
   assert.match(r.notFound, /solver-priv-liq\.near/);
-  assert.match(r.notFound, /many orders/);
+  assert.match(r.notFound, /many people's swaps/);
   assert.doesNotMatch(r.notFound, /wallet account/);
 });
 test("a pasted busy account keeps the wallet-account answer", async () => {

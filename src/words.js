@@ -36,3 +36,8 @@ export const stepWords = (step, ref) => (STEP_WORDS[step] ? STEP_WORDS[step](ref
 
 /** Where an internal step id points, for sentences: "credit" is the NEAR Intents balance, "omni:…" the Omni bridge. */
 export const legPlace = (id) => (id === "credit" ? "NEAR Intents" : /^omni:/.test(id) ? "the Omni bridge" : /^end:/.test(id) ? "the payout" : place(id)[0]);
+
+/** What a status claim says, in words people use, and who said it. */
+export const STATUS_SAYS = { SUCCESS: "done", FAILED: "failed", PENDING: "still in progress", REFUNDED: "refunded", UNKNOWN: "no clear status" };
+const CLAIM_BY = { "1click": "1Click (the swap service)", "user-report": "Your report" };
+export const claimWords = (c) => `${CLAIM_BY[c.by] ?? c.by} says: ${STATUS_SAYS[c.status] ?? c.status}`;

@@ -15,7 +15,7 @@ test("an open Omni transfer stops at the bridge and shows the chain it never rea
   const v = await open("omni-665");
   assert.deepEqual(v.stops.map((s) => [s.name, s.state]), [["NEAR", "passed"], ["Omni bridge", "here"], ["Ethereum", "ahead"]]);
   assert.equal(v.stops[0].label, "sent");
-  assert.equal(v.stops[2].label, "not reached");
+  assert.equal(v.stops[2].label, "not reached yet");
   assert.equal(v.stops[2].class, null);
   assert.equal(v.tone, "act");
 });

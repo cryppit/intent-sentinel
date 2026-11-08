@@ -2,7 +2,7 @@
 // network. `at` is when the case was read. A soft rule only fills in a next party when nothing is left open; a settling
 // rule never replaces an open one, because a proven payout on one leg says nothing about the others.
 import { PARTIES } from "./schema.js";
-import { PARTY_WORDS, legPlace, place, shortRef, stepWords } from "./words.js";
+import { PARTY_WORDS, STATUS_SAYS, legPlace, place, shortRef, stepWords } from "./words.js";
 
 const when = (s) => Date.parse(s);
 const isProven = (leg) => leg.class === "PROVEN";
@@ -12,8 +12,6 @@ const settled = (c) => c.legs.some((l) => isProven(l) && (l.status === "PAID_OUT
 const leg = (c, test) => c.legs.find(test) ?? null;
 const provider = (key) => PARTY_WORDS[key] && !["user", "none", "unknown", "anyone"].includes(key) ? title(PARTY_WORDS[key]) : place(key)[0];
 const title = (s) => s[0].toUpperCase() + s.slice(1);
-// What a status claim says, in words people use.
-const STATUS_SAYS = { SUCCESS: "done", FAILED: "failed", PENDING: "still in progress", REFUNDED: "refunded" };
 
 const PRIVATE_FRESH_MS = 3600_000;
 const privateFresh = (l, at) => Boolean(l?.at) && when(at) - when(l.at) <= PRIVATE_FRESH_MS;

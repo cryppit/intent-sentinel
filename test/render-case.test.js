@@ -18,7 +18,7 @@ test("inferred never reads as proven", () =>
 test("each class is words, not colour alone", () =>
   assert.deepEqual(caseView(failed).legs.map((l) => l.classLabel), ["Proven", "Unknown"]));
 test("a leg says what happened in words", () => assert.equal(caseView(done).legs[0].label, "paid out"));
-test("a failed source is named", () => assert.equal(caseView(failed).legs[1].label, "could not be read"));
+test("a failed source is named", () => assert.equal(caseView(failed).legs[1].label, "couldn't check"));
 test("known sources link to an explorer", () => {
   assert.equal(explorerUrl("near", "ABC"), "https://nearblocks.io/txns/ABC");
   assert.equal(explorerUrl("eth", "0xabc"), "https://etherscan.io/tx/0xabc");
@@ -30,8 +30,8 @@ test("an unknown source has no link", () => assert.equal(explorerUrl("nowhere", 
 test("claims and balances reach the page", async () => {
   const c = caseWith([{ provider: "x", status: "CREDITED", amountIn: "1", amountOut: ["1"], decimals: 0 }, paidOutLeg], [{ by: "1click", status: "FAILED", observedAt: AT, class: "REPORTED" }]);
   const view = caseView(await buildVerdict(c));
-  assert.deepEqual(view.claims, ["1click says FAILED"]);
-  assert.match(view.balances[0], /balance/);
+  assert.deepEqual(view.claims, ["1Click (the swap service) says: failed"]);
+  assert.match(view.balances[0], /Amounts match/);
 });
 test("a warning reaches the page", async () => {
   const c = caseWith([paidOutLeg]);

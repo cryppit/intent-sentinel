@@ -82,7 +82,7 @@ test("a packet whose evidence was swapped fails its check", async () => {
   assert.equal(await verifyPacket(packet), false);
 });
 
-const noOrder = { order: async () => ({ notFound: "No NEAR Intents order was found for that id." }), transfer: async () => ({ notFound: "none" }) };
+const noOrder = { order: async () => ({ notFound: "We found no NEAR Intents swap for that ID. Check that you copied all of it." }), transfer: async () => ({ notFound: "none" }) };
 const BC1 = "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq";
 
 test("1Click being down isn't reported as no order", async () => {
@@ -93,7 +93,7 @@ test("1Click being down isn't reported as no order", async () => {
 
 test("1Click saying it doesn't know the address is an honest no", async () => {
   const r = await openCase(BC1, { now: AT, adapters: { ...noOrder, status: async () => ({ claim: null, nearTx: null }) } });
-  assert.match(r.error, /No NEAR Intents order/);
+  assert.match(r.error, /no NEAR Intents swap/);
 });
 
 const status = (fetchImpl) => readStatus("addr", { now: AT, fetch: fetchImpl });

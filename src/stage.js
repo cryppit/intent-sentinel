@@ -46,7 +46,7 @@ export function stageView(caseData, verdict) {
   if (tone !== "done" && !LAST_STOP.has(caseData.legs.at(-1)?.status)) {
     const to = caseData.legs.at(-1)?.facts?.to;
     const [name, logo] = to ? place(to) : ["Destination", null];
-    stops.push({ name, logo, state: stopped ? "ahead" : "here", label: stopped ? "not reached" : "not proven", class: null, classLabel: null, failed: false, custody: null });
+    stops.push({ name, logo, state: stopped ? "ahead" : "here", label: stopped ? "not reached yet" : "no proof it arrived yet", class: null, classLabel: null, failed: false, custody: null });
   }
   const holder = stops.filter((s) => (s.state === "passed" || s.state === "here") && s.class === "PROVEN" && s.custody).at(-1);
   const board = BOARD.map(([key, name]) => ({ key, name, lit: key === party }));

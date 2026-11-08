@@ -1,6 +1,6 @@
 // What the page shows for a verdict, kept pure so it can be tested. Evidence classes are words, never colour alone.
-import { balanceWords, headline, STATUS_WORDS } from "./render-text.js";
-import { CLASS_WORDS } from "./words.js";
+import { askWho, balanceWords, headline, STATUS_WORDS } from "./render-text.js";
+import { CLASS_WORDS, claimWords } from "./words.js";
 
 const EXPLORERS = {
   near: "https://nearblocks.io/txns/", eth: "https://etherscan.io/tx/", sol: "https://solscan.io/tx/", btc: "https://mempool.space/tx/",
@@ -20,6 +20,8 @@ export function caseView(verdict) {
     headline: headline(verdict),
     question: verdict.nextAction.question,
     ask: verdict.nextAction.evidenceToAsk ?? [],
+    askWho: askWho(verdict.nextAction.party),
+    youCan: verdict.nextAction.youCan ?? [],
     party: verdict.nextAction.party,
     tone: toneOf(verdict),
     legs: verdict.legs.map((l) => ({
@@ -29,7 +31,7 @@ export function caseView(verdict) {
       classLabel: title(CLASS_WORDS[l.class] ?? l.class),
       failed: l.status === "LOOKUP_FAILED",
     })),
-    claims: verdict.claims.map((c) => `${c.by} says ${c.status}`),
+    claims: verdict.claims.map(claimWords),
     balances: verdict.conservation.map(balanceWords),
     warnings: (verdict.warnings ?? []).map((w) => w.detail),
   };

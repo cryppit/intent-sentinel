@@ -109,7 +109,7 @@ export function traceToLegs(report, now) {
     evidence: evidenceOf(report, ends, now),
     claims: [],
     identifiers: [...new Set(ids.filter(Boolean))],
-    warnings: report.flags.filter((f) => f.kind in WARNINGS).map(({ kind, detail }) => ({ kind, party: WARNINGS[kind], detail })),
+    warnings: report.flags.filter((f) => f.kind in WARNINGS).map(({ kind, detail }) => ({ kind, party: WARNINGS[kind], detail: plainWarning(kind, detail) })),
     next: follow.map(({ payout }) => ({ kind: "evm-tx", chain: short(payout.chain), value: payout.tx, ...(payout.destination ? { recipient: payout.destination } : {}) })),
   };
 }
@@ -139,14 +139,47 @@ export async function withHotProof(report, opts = {}) {
 /** A broken source, not an answer about the order: these must never read as "no such order". */
 const sourceFailed = (e) => fastnearUnavailable(e) || ["TimeoutError", "AbortError", "SyntaxError", "TypeError"].includes(e.name) || /\bHTTP \d{3}\b|answered \d{3}/.test(e.message);
 
+// The tracer's notes name contract methods (force_lock_account, ft_transfer_call). People get plain words instead.
+const named = (re, text) => re.exec(text ?? "")?.[1] ?? "that account";
+const PLAIN_WARNINGS = {
+  locked: () => "NEAR Intents has locked the account this swap uses. While it's locked, nothing can be swapped or paid out from it. Only NEAR Intents support can unlock it.",
+  destination_missing: (d) => { const x = named(/named (\S+?) yet/, d); return `The NEAR account ${x} doesn't exist yet. The payout is waiting under that name, and whoever creates ${x} first will control it. If ${x} is yours, create it now.`; },
+  withdrawal_refused: () => "The hand-over to the bridge failed. NEAR Intents doesn't add failed hand-overs back to your swap, so the coins are held by NEAR Intents itself. Ask NEAR Intents support to return them.",
+  withdrawal_returned: () => "A payout failed, and the coins came back to the swap's NEAR Intents account.",
+  payout_bounced: (d) => /do_native_withdraw/.test(d ?? "")
+    ? `NEAR Intents' own payout step failed, so no NEAR was sent to ${named(/sent to (\S+?)[,.;: ]/, d)}. Ask NEAR Intents support to return it.`
+    : `The payout to ${named(/payout to (\S+?)[ (]/, d)} couldn't be delivered, so it went back to NEAR Intents. NEAR Intents doesn't add it back to your swap automatically. Ask NEAR Intents support to return it.`,
+  several_orders: (d) => { const m = /(\d+) separate deposits[\s\S]*?\((\d+) of (\d+)\)/.exec(d ?? ""); return m ? `This deposit address was used for ${m[1]} separate swaps. This shows the latest one (${m[2]} of ${m[3]}). To see another, paste its NEAR transaction ID.` : "This deposit address was used for more than one swap. This shows the latest one. To see another, paste its NEAR transaction ID."; },
+  executing: () => "NEAR is still working on this transaction, so the result isn't final. Check again in a minute.",
+  incomplete_history: () => "Part of this swap's history is missing from the records we could read, so this answer may be incomplete.",
+  ledger_mismatch: () => "NEAR Intents shows a different balance from what the history adds up to. Part of the history may be missing, or the money moved after we read it.",
+};
+const plainWarning = (kind, detail) => PLAIN_WARNINGS[kind]?.(detail) ?? detail;
+
 // The tracer follows a pasted transaction to the account that signed it. When that account settles many orders, such as
 // a solver or the private settlement account, the transaction doesn't belong to one swap.
 const BUSY = /^(\S+) has .* transactions: that is a wallet account/;
 const looksLikeTx = (raw) => /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(String(raw).trim());
+const PLAIN_NOT_FOUND = [
+  [/is neither a transaction nor a receipt on NEAR/, () => "We couldn't find that ID on NEAR. Check that you copied all of it."],
+  [/is still executing on NEAR/, () => "NEAR is still working on that transaction. Check again in a minute."],
+  [/carries no NEAR Intents order/, () => "That transaction isn't part of a NEAR Intents swap."],
+  [/^(\S+) has no NEAR Intents history/, (m) => `We found no NEAR Intents swaps for ${m[1]}. If it's your own wallet address, paste the transaction ID of your deposit instead.`],
+  [/origin-chain transaction hashes are not searchable yet/, () => "We can't search by this kind of transaction ID yet. Paste the NEAR transaction ID or your deposit address."],
+  [/not searchable yet/, () => "We can't search this kind of deposit by its transaction ID yet. Paste the NEAR transaction ID or your deposit address."],
+  [/no NEAR Intents deposit names this/, () => "We found no NEAR Intents deposit from this transaction in the 2 hours after it was sent."],
+];
 function plainNotFound(raw, message) {
   const busy = BUSY.exec(message);
-  if (!busy || !looksLikeTx(raw)) return message;
-  return `That transaction was signed by ${busy[1]}, which settles many orders, so it doesn't belong to one swap. Paste your own deposit transaction or deposit address instead.`;
+  if (!busy) {
+    for (const [re, say] of PLAIN_NOT_FOUND) {
+      const m = re.exec(message);
+      if (m) return say(m);
+    }
+    return message;
+  }
+  if (!looksLikeTx(raw)) return `${busy[1]} is a busy wallet account, not one swap. Paste the swap's transaction ID or your deposit transaction instead.`;
+  return `That transaction was made by ${busy[1]}, an account that handles many people's swaps, so it doesn't point to yours. Paste your own deposit transaction or deposit address instead.`;
 }
 
 export async function readOrder(raw, ctx) {
@@ -156,7 +189,7 @@ export async function readOrder(raw, ctx) {
   });
   try {
     const report = await Promise.race([(ctx.check ?? liveCheck)(raw, ctx), limit]);
-    if (report.verdict === "not_found") return { notFound: "No NEAR Intents order was found for that id." };
+    if (report.verdict === "not_found") return { notFound: "We found no NEAR Intents swap for that ID. Check that you copied all of it." };
     return traceToLegs(report, ctx.now);
   } catch (e) {
     return sourceFailed(e) ? failedRead("near", raw, e.message, ctx.now) : { notFound: plainNotFound(raw, e.message) };

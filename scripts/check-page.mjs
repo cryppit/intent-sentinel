@@ -107,11 +107,11 @@ check("play hides the old case file", await js("document.getElementById('out').h
 await click("#demo-toggle");
 
 await load();
-for (const [input, want] of [["bc1hello", "doesn't look like"], ["foo:123", "doesn't look like"], ["alice.testnet", "testnet"]]) {
+for (const [input, want] of [["bc1hello", "We don't recognise that"], ["foo:123", "We don't recognise that"], ["alice.testnet", "testnet"]]) {
   await js(`document.getElementById('id').value=${JSON.stringify(input)};document.getElementById('form').requestSubmit()`);
   await wait(900);
   check(`bad input ${input} is refused in plain words`, (await text("#answer")).includes(want), await text("#answer"));
-  check(`bad input ${input}: button comes back`, (await text("#go")) === "Open case →");
+  check(`bad input ${input}: button comes back`, (await text("#go")) === "Check it →");
 }
 
 await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
@@ -124,7 +124,7 @@ await send("Emulation.setEmulatedMedia", { features: [] });
 if (live) {
   for (const [input, want] of [["Near:563761", "Nobody needs to act"], ["Near:563650", "Nobody needs to act"]]) {
     await js(`document.getElementById('id').value=${JSON.stringify(input)};document.getElementById('form').requestSubmit()`);
-    for (let i = 0; i < 95 && (await text("#go")) !== "Open case →"; i++) await wait(1000);
+    for (let i = 0; i < 95 && (await text("#go")) !== "Check it →"; i++) await wait(1000);
     check(`live ${input}`, (await text("#answer")).includes(want), (await text("#answer")).replace(/\n/g, " / "));
     await wait(2600);
     await shot(`live-${input.replace(":", "-")}`);
@@ -146,7 +146,7 @@ if (live) {
   await load();
   const sol = "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5";
   await js(`document.getElementById('id').value=${JSON.stringify(sol)};document.getElementById('form').requestSubmit()`);
-  for (let i = 0; i < 95 && (await text("#go")) !== "Open case →"; i++) await wait(1000);
+  for (let i = 0; i < 95 && (await text("#go")) !== "Check it →"; i++) await wait(1000);
   check("a Solana signature opens in the browser", (await text("#answer")).includes("Omni relayer"), (await text("#answer")).replace(/\n/g, " / "));
   await shot("live-solana", true);
 }

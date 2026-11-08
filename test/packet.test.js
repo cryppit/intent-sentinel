@@ -42,7 +42,7 @@ test("who acts next comes first", async () => {
 test("nobody to act says it's finished", async () => assert.match(renderText(await buildVerdict(caseWith([paidOutLeg]))).split("\n")[0], /nothing left/i));
 test("an unreadable source says so, and doesn't look finished", async () => {
   const c = caseWith([paidOutLeg, { provider: "omni", status: "LOOKUP_FAILED", class: "UNKNOWN" }]);
-  assert.match(renderText(await buildVerdict(c)), /could not read omni/i);
+  assert.match(renderText(await buildVerdict(c)), /couldn't check Omni bridge/i);
 });
 
 test("a true packet checks out", async () => assert.equal(await verifyPacket(buildPacket(base, v)), true));
@@ -63,4 +63,4 @@ test("warnings are printed", async () => {
   assert.match(renderText(await buildVerdict(c)), /locked by operators/);
 });
 test("a balance not checked says so", async () =>
-  assert.match(renderText(await buildVerdict(caseWith([{ provider: "x", status: "CREDITED", unchecked: "a swap changes the token" }, paidOutLeg]))), /not checked/));
+  assert.match(renderText(await buildVerdict(caseWith([{ provider: "x", status: "CREDITED", unchecked: "a swap changes the token" }, paidOutLeg]))), /not compared/));
