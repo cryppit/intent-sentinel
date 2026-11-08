@@ -121,7 +121,8 @@ const RULES = [
   },
   {
     code: "TRACE_WARNING",
-    fires: (c) => c.warnings?.[0] ?? null,
+    // A note that asks nobody to act (party "none") is shown, but doesn't decide the case.
+    fires: (c) => c.warnings?.find((w) => w.party !== "none") ?? null,
     party: (c, w) => named(w.party),
     question: (c, w) => w.detail,
     ask: () => [],

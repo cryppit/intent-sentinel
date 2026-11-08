@@ -3,6 +3,7 @@
 // changes the token. Where it can't be checked, the case says so rather than staying silent.
 import { checkOrderWithFallback, EVM_RPC, fastnearClient, fastnearUnavailable, payingWithdrawal, publicOriginClient, publicPayoutClient, searchPayout } from "../../vendor/wms-core.mjs";
 import { failedRead } from "../net.js";
+import { shortRef } from "../words.js";
 import { proveHotPayout } from "./hot.js";
 import { SOLANA_RPCS, withSolanaFallback } from "./solana.js";
 
@@ -22,8 +23,12 @@ const CASE_TIMEOUT_MS = 45_000;
 // Tracer flags that mean the order isn't simply finished, and who can answer each.
 const WARNINGS = {
   destination_missing: "user", locked: "near-intents", withdrawal_refused: "near-intents", withdrawal_returned: "near-intents", payout_bounced: "near-intents",
-  ledger_mismatch: "unknown", incomplete_history: "unknown", several_orders: "unknown", executing: "unknown",
+  ledger_mismatch: "unknown", incomplete_history: "unknown", executing: "unknown",
+  // A note, not a question: the account held several orders and the case shows one of them.
+  several_orders: "none", busy_account: "none",
 };
+// The tracer skips the intents.near balance check on purpose when an account held several orders. That isn't a failed read.
+const SKIPPED_ON_PURPOSE = /held several orders/;
 
 const classOf = (payout) => (PROVEN_PAYOUT.includes(payout.how) ? "PROVEN" : "INFERRED");
 const later = (ns, sec) => new Date(Number(BigInt(ns) / 1_000_000n) + (sec ?? 0) * 1000).toISOString();
@@ -93,13 +98,14 @@ export function traceToLegs(report, now) {
   }
   const ends = report.verdict === "confidential" ? [] : endsOf(report);
   // The order went into Confidential Intents and came back out: the exchange in between is private by design.
-  if (report.verdict !== "confidential" && report.flags.some((f) => f.kind === "confidential" && /came back/.test(f.detail ?? ""))) {
+  if (!report.busyAccount && report.verdict !== "confidential" && report.flags.some((f) => f.kind === "confidential" && /came back/.test(f.detail ?? ""))) {
     legs.push({ id: "private", provider: "near-intents", status: "NOT_VISIBLE", class: "NOT_VISIBLE", custody: "not visible", facts: { privateRoundTrip: true } });
   }
   legs.push(...ends.map((e) => endLeg(e, report, lastAt)));
-  const open = openLeg(report, lastAt);
+  // A busy account read through one withdrawal says nothing about what else it holds, so no open step is claimed.
+  const open = report.busyAccount ? null : openLeg(report, lastAt);
   if (open) legs.push(open);
-  if (report.balanceCheck?.status === "not_verified") legs.push({ id: "balance-check", provider: "intents.near", status: "LOOKUP_FAILED", class: "UNKNOWN", reason: report.balanceCheck.reason });
+  if (report.balanceCheck?.status === "not_verified" && !SKIPPED_ON_PURPOSE.test(report.balanceCheck.reason ?? "")) legs.push({ id: "balance-check", provider: "intents.near", status: "LOOKUP_FAILED", class: "UNKNOWN", reason: report.balanceCheck.reason });
   const follow = ends.filter(({ payout }) => payout.status === "arrived" && PROVEN_PAYOUT.includes(payout.how) && payout.tx?.startsWith("0x") && EVM_RPC[short(payout.chain)]);
   const hops = [...report.deposits, ...report.swaps, ...report.transfers, ...report.withdrawals].map((h) => h.tx);
   const ids = [report.account, o.txHash, o.originNonce, ...hops, ...ends.map((e) => e.payout.tx)];
@@ -116,11 +122,60 @@ export function traceToLegs(report, now) {
 
 const timed = (f) => (url, init = {}) => f(url, { ...init, signal: init.signal ?? AbortSignal.timeout(SOURCE_TIMEOUT_MS) });
 
+/**
+ * FastNEAR, but when the order's account has too many transactions to read (a busy account), a pasted NEAR transaction
+ * is read on its own. Only a withdrawal is kept that way: its payout is a fact by itself, while a deposit or a swap
+ * alone can't say where the money went next.
+ */
+function focusable(base, raw) {
+  const pasted = String(raw).trim();
+  const state = { tx: null, busy: null };
+  const client = {
+    ...base,
+    async transactions(hashes) {
+      const txs = await base.transactions(hashes);
+      if (!state.tx && hashes.length === 1 && hashes[0] === pasted) state.tx = txs[0] ?? null;
+      return txs;
+    },
+    async receiptTx(id) {
+      const tx = await base.receiptTx(id);
+      if (!state.tx && id === pasted) state.tx = tx;
+      return tx;
+    },
+    async accountTxs(account) {
+      try {
+        return await base.accountTxs(account);
+      } catch (e) {
+        if (!BUSY.test(e.message ?? "") || !state.tx) throw e;
+        state.busy = { account, error: e };
+        return [{ hash: state.tx.hash, height: state.tx.height, timestampNs: state.tx.timestampNs }];
+      }
+    },
+    // A busy account's balance on intents.near belongs to all its orders, so it says nothing about this one.
+    get intentsBalances() {
+      return state.busy ? undefined : base.intentsBalances;
+    },
+  };
+  return { client, state };
+}
+
+// Flags that only describe the account's history, which a busy account's single transaction can't speak for.
+const HISTORY_FLAGS = new Set(["incomplete_history", "ledger_mismatch", "several_orders"]);
+
+function onlyThePayout(report, { account, error }, tx) {
+  if (!report.withdrawals.some((w) => w.tx === tx.hash)) throw error;
+  const flags = report.flags.filter((f) => !HISTORY_FLAGS.has(f.kind));
+  // With no deposit in view the tracer says "not_found"; the withdrawal is there, so the case is about its payout.
+  return { ...report, verdict: "payout_only", busyAccount: account, flags: [...flags, { kind: "busy_account", detail: account }] };
+}
+
 async function liveCheck(raw, ctx) {
   const f = timed(ctx.fetch ?? fetch);
   const nowNs = BigInt(Date.parse(ctx.now)) * 1_000_000n;
   const payouts = publicPayoutClient(withSolanaFallback(f), { solanaRpc: SOLANA_RPCS[0] });
-  const report = await checkOrderWithFallback(raw, fastnearClient(f), nowNs, undefined, payouts, publicOriginClient(f));
+  const near = focusable(fastnearClient(f), raw);
+  let report = await checkOrderWithFallback(raw, near.client, nowNs, undefined, payouts, publicOriginClient(f));
+  if (near.state.busy) report = onlyThePayout(report, near.state.busy, near.state.tx);
   const paying = payingWithdrawal(report);
   const others = report.withdrawals.filter((w) => w !== paying && !(w.returned || w.refused || w.bounced));
   const found = await Promise.all(others.map((w) => searchPayout(w, payouts, nowNs).catch(() => ({ status: "unverified" }))));
@@ -149,15 +204,22 @@ const PLAIN_WARNINGS = {
   payout_bounced: (d) => /do_native_withdraw/.test(d ?? "")
     ? `NEAR Intents' own payout step failed, so no NEAR was sent to ${named(/sent to (\S+?)[,.;: ]/, d)}. Ask NEAR Intents support to return it.`
     : `The payout to ${named(/payout to (\S+?)[ (]/, d)} couldn't be delivered, so it went back to NEAR Intents. NEAR Intents doesn't add it back to your swap automatically. Ask NEAR Intents support to return it.`,
-  several_orders: (d) => { const m = /(\d+) separate deposits[\s\S]*?\((\d+) of (\d+)\)/.exec(d ?? ""); return m ? `This deposit address was used for ${m[1]} separate swaps. This shows the latest one (${m[2]} of ${m[3]}). To see another, paste its NEAR transaction ID.` : "This deposit address was used for more than one swap. This shows the latest one. To see another, paste its NEAR transaction ID."; },
+  several_orders: (d) => {
+    const m = /(\d+) separate deposits[\s\S]*?follows (the one with the transaction you gave|the latest) \((\d+) of (\d+)\)/.exec(d ?? "");
+    if (!m) return "This account was used for more than one swap. This shows one of them. To see another, paste its NEAR transaction ID.";
+    const which = m[2] === "the latest" ? "the latest one" : "the one with the transaction you pasted";
+    return `This account was used for ${m[1]} separate swaps. This shows ${which} (${m[3]} of ${m[4]}). To see another, paste its NEAR transaction ID.`;
+  },
+  busy_account: (d) => `${d ? `The account ${shortRef(d)}` : "This account"} has many swaps, so we checked only the payout in the transaction you pasted, not the rest of the account's history.`,
   executing: () => "NEAR is still working on this transaction, so the result isn't final. Check again in a minute.",
   incomplete_history: () => "Part of this swap's history is missing from the records we could read, so this answer may be incomplete.",
   ledger_mismatch: () => "NEAR Intents shows a different balance from what the history adds up to. Part of the history may be missing, or the money moved after we read it.",
 };
 const plainWarning = (kind, detail) => PLAIN_WARNINGS[kind]?.(detail) ?? detail;
 
-// The tracer follows a pasted transaction to the account that signed it. When that account settles many orders, such as
-// a solver or the private settlement account, the transaction doesn't belong to one swap.
+// The tracer follows a pasted transaction to the NEAR Intents account it moved money in (not the account that signed it:
+// that is often intents.near itself). When that account holds many orders, such as a solver, the private settlement
+// account or a long-used deposit account, the transaction alone doesn't say which swap it is.
 const BUSY = /^(\S+) has .* transactions: that is a wallet account/;
 const looksLikeTx = (raw) => /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(String(raw).trim());
 const PLAIN_NOT_FOUND = [
@@ -178,8 +240,8 @@ function plainNotFound(raw, message) {
     }
     return message;
   }
-  if (!looksLikeTx(raw)) return `${busy[1]} is a busy wallet account, not one swap. Paste the swap's transaction ID or your deposit transaction instead.`;
-  return `That transaction was made by ${busy[1]}, an account that handles many people's swaps, so it doesn't point to yours. Paste your own deposit transaction or deposit address instead.`;
+  if (!looksLikeTx(raw)) return `${busy[1]} has many swaps, too many for us to read them all. Paste the transaction ID of the one swap you're asking about.`;
+  return `That transaction is part of the NEAR Intents account ${busy[1]}, which has many swaps. On its own, it doesn't show which swap is yours. Paste the NEAR transaction that paid you out, or your deposit address.`;
 }
 
 export async function readOrder(raw, ctx) {

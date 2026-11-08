@@ -194,3 +194,13 @@ test("a payout seen but never confirmed for hours is not called on its way", () 
   const r = evaluate(caseWith([credited, { provider: "btc", status: "PAID_OUT", class: "INFERRED", at: minsBefore(600) }]), AT);
   assert.ok(!r.findings.includes("PAYOUT_PENDING"));
 });
+test("a tracer note that asks nobody to act doesn't hold a paid case open", () => {
+  const c = { ...caseWith([paidOutLeg]), warnings: [{ kind: "several_orders", party: "none", detail: "a note" }] };
+  const r = evaluate(c, AT);
+  assert.equal(r.journey, "PAID_OUT");
+  assert.equal(r.nextAction.party, "none");
+});
+test("a tracer warning that names a party still decides", () => {
+  const c = { ...caseWith([paidOutLeg]), warnings: [{ kind: "locked", party: "near-intents", detail: "locked" }] };
+  assert.equal(evaluate(c, AT).nextAction.party, "near-intents");
+});

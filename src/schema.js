@@ -1,6 +1,6 @@
 // The fixed vocabulary of a verdict. Changing any of these changes what a verdict means, so RULES_VERSION moves with them.
 export const SCHEMA = "intent-delivery-verdict/1";
-export const RULES_VERSION = "1.5.0";
+export const RULES_VERSION = "1.6.0";
 
 export const CLASSES = ["PROVEN", "REPORTED", "INFERRED", "UNKNOWN", "NOT_VISIBLE"];
 
