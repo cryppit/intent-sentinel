@@ -57,3 +57,8 @@ test("a tampered packet is refused from a root", () => {
   assert.equal(r.status, 1);
   assert.match(r.stderr, /doesn't match/);
 });
+test("the packets saved in pins/2026-11-06 give the root pinned on NEAR testnet that day", () => {
+  const r = run("root", "pins/2026-11-06", "--day", "2026-11-06");
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /root 88c6743c2cfa00d7bfd01a34b24dd59a7142deac90159b46d57118914671ccae/);
+});

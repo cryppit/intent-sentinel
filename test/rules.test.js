@@ -125,3 +125,32 @@ test("an unchecked balance is shown, and isn't a mismatch", () => {
   assert.equal(r.conservation[0].reason, "a swap changes the token");
   assert.ok(!r.findings.includes("CONSERVATION_MISMATCH"));
 });
+
+// A payout that hasn't shown up soon after the credit is most likely still on its way. Say so, but never call it done.
+const minsBefore = (m) => new Date(Date.parse(AT) - m * 60_000).toISOString();
+const credited = { provider: "near-intents", status: "CREDITED" };
+const unseen = (provider, m) => ({ provider, status: "PAYOUT_UNSEEN", class: "UNKNOWN", at: minsBefore(m) });
+test("a payout unseen minutes after the credit reads as still on its way", () => {
+  const r = evaluate(caseWith([credited, unseen("bsc", 10)]), AT);
+  assert.equal(r.journey, "INSUFFICIENT_EVIDENCE");
+  assert.ok(r.findings.includes("PAYOUT_PENDING"), r.findings.join());
+  assert.match(r.nextAction.question, /on its way/);
+  assert.match(r.nextAction.evidenceToAsk.join(), /again/);
+});
+test("a payout unseen hours after the credit is not called on its way", () => {
+  const r = evaluate(caseWith([credited, unseen("bsc", 120)]), AT);
+  assert.ok(!r.findings.includes("PAYOUT_PENDING"));
+  assert.match(r.nextAction.question, /could not be read/);
+});
+test("a Bitcoin payout gets a longer wait than a fast chain", () => {
+  assert.ok(evaluate(caseWith([credited, unseen("btc", 120)]), AT).findings.includes("PAYOUT_PENDING"));
+  assert.ok(!evaluate(caseWith([credited, unseen("btc", 240)]), AT).findings.includes("PAYOUT_PENDING"));
+});
+test("a failed read is never excused as a payout on its way", () => {
+  const r = evaluate(caseWith([credited, unseen("bsc", 10), { provider: "x", status: "LOOKUP_FAILED", class: "UNKNOWN" }]), AT);
+  assert.ok(!r.findings.includes("PAYOUT_PENDING"));
+});
+test("an unseen payout with no time is not called on its way", () => {
+  const r = evaluate(caseWith([credited, { provider: "bsc", status: "PAYOUT_UNSEEN", class: "UNKNOWN" }]), AT);
+  assert.ok(!r.findings.includes("PAYOUT_PENDING"));
+});

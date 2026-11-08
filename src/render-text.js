@@ -13,6 +13,7 @@ export const balanceWords = (x) => (x.ok === null ? `amounts on ${x.leg} not che
 
 export function headline(verdict) {
   const { party } = verdict.nextAction;
+  if (verdict.findings?.includes("PAYOUT_PENDING")) return "No answer yet: the payout is probably still on its way.";
   if (verdict.journey === "INSUFFICIENT_EVIDENCE") return "We can't give an answer yet: part of this couldn't be read or proven.";
   if (party === "none") return "Nobody needs to act: there's nothing left to do.";
   const who = PARTY_WORDS[party] ?? party;

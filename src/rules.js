@@ -133,6 +133,12 @@ const RULES = [
 const OPEN = { journey: "INSUFFICIENT_EVIDENCE", party: "unknown" };
 const ASK_MORE = { party: "unknown", question: "What could not be read, and can it be checked again?", evidenceToAsk: ["a retry, or another identifier for this order"] };
 
+// How long after the credit an unseen payout is still most likely on its way. Bitcoin and Zcash withdrawals are slower.
+const PENDING_MS = { btc: 3 * 3600_000, zec: 3 * 3600_000 };
+const PENDING_DEFAULT_MS = 3600_000;
+const WAIT = { party: "unknown", question: "The payout hasn't shown up yet, but the money was credited recently, so it is probably still on its way. Check again in a few minutes.", evidenceToAsk: ["the same ID again in a few minutes"] };
+const young = (l, at) => l.status === "PAYOUT_UNSEEN" && l.at && when(at) - when(l.at) <= (PENDING_MS[l.provider] ?? PENDING_DEFAULT_MS);
+
 const SETTLED = ["PAID_OUT", "REFUNDED"];
 const STILL_OPEN = ["PAYOUT_UNSEEN", "NOT_PROVEN", "HELD", "CREDIT_PENDING"];
 const unproven = (l) => (SETTLED.includes(l.status) && !isProven(l)) || STILL_OPEN.includes(l.status);
@@ -177,6 +183,12 @@ export function evaluate(caseData, at) {
     r.findingClasses[OPEN.journey] = "UNKNOWN";
     r.journey = OPEN.journey;
     r.nextAction = ASK_MORE;
+    const open = caseData.legs.filter(unproven);
+    if (!failed && open.length && open.every((l) => young(l, at))) {
+      r.findings.push("PAYOUT_PENDING");
+      r.findingClasses.PAYOUT_PENDING = "INFERRED";
+      r.nextAction = WAIT;
+    }
   }
   return r;
 }

@@ -43,3 +43,9 @@ test("what to ask for reaches the page", () => {
   const v = caseView({ journey: "GATED_FINISH", nextAction: { party: "omni-relayer", question: "q", evidenceToAsk: ["whether this transfer will be processed"] }, legs: [], claims: [], conservation: [], warnings: [] });
   assert.deepEqual(v.ask, ["whether this transfer will be processed"]);
 });
+
+const young = await buildVerdict({ ...caseWith([{ provider: "near-intents", status: "CREDITED" }, { provider: "bsc", status: "PAYOUT_UNSEEN", class: "UNKNOWN", at: AT }]) });
+test("a payout still on its way gets its own headline, and still isn't done", () => {
+  assert.match(caseView(young).headline, /probably still on its way/);
+  assert.equal(caseView(young).tone, "unknown");
+});

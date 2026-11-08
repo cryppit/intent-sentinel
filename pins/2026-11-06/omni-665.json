@@ -1,0 +1,60 @@
+{
+  "verdict": {
+    "schema": "intent-delivery-verdict/1",
+    "incident": "iv1_79cd091de6ae02448089b2f0c5cafe0324bdf04f7c64ef377cb9903bc1f8cb17",
+    "computedAt": "2026-09-28T10:16:23.000Z",
+    "rulesVersion": "1.1.0",
+    "journey": "GATED_FINISH",
+    "nextAction": {
+      "party": "omni-relayer",
+      "question": "Only an Omni relayer can run sign_transfer. Will it run for Near:563760?",
+      "evidenceToAsk": [
+        "whether this transfer will be processed"
+      ]
+    },
+    "legs": [
+      {
+        "provider": "omni",
+        "status": "INITIALISED",
+        "class": "PROVEN",
+        "custody": "omni bridge"
+      }
+    ],
+    "findings": [
+      "GATED_FINISH"
+    ],
+    "findingClasses": {
+      "GATED_FINISH": "PROVEN"
+    },
+    "conservation": [],
+    "claims": [],
+    "evidenceHash": "62e25db43921d711df06e0594305917f9c0f4d22f4f25b48378f0a4ed7c3f24d",
+    "outputHash": "1c8c687b61324b9eb8f1a59c1703636db86600c8326665481aa632bea6e5b021"
+  },
+  "evidence": [
+    {
+      "id": "omni:9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR",
+      "source": "near",
+      "kind": "tx",
+      "ref": "9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR",
+      "observedAt": "2026-09-28T10:16:23.000Z",
+      "class": "PROVEN"
+    }
+  ],
+  "timeline": [
+    {
+      "at": "2026-09-28T10:16:23.000Z",
+      "source": "near",
+      "kind": "tx",
+      "ref": "9poz2Ntoi16oaJZjyWub2QR8yLWveaYSPpGayDLHapvR"
+    }
+  ],
+  "openQuestions": [
+    {
+      "question": "Only an Omni relayer can run sign_transfer. Will it run for Near:563760?",
+      "evidenceToAsk": [
+        "whether this transfer will be processed"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "verdict": {
+    "schema": "intent-delivery-verdict/1",
+    "incident": "iv1_902fc348bc2fc6fb53ff73f6ba6c933461ae135789522981eeba2ccba178d91e",
+    "computedAt": "2026-09-30T16:35:22.924Z",
+    "rulesVersion": "1.1.0",
+    "journey": "REFUNDED",
+    "nextAction": {
+      "party": "none",
+      "question": null,
+      "evidenceToAsk": []
+    },
+    "legs": [
+      {
+        "provider": "btc",
+        "status": "DEPOSIT_CONFIRMED",
+        "class": "PROVEN",
+        "custody": "bridge"
+      },
+      {
+        "provider": "near-intents",
+        "status": "CREDITED",
+        "class": "PROVEN",
+        "custody": "intents.near"
+      },
+      {
+        "provider": "btc",
+        "status": "REFUNDED",
+        "class": "PROVEN",
+        "custody": "refund address"
+      }
+    ],
+    "findings": [
+      "REFUNDED"
+    ],
+    "findingClasses": {
+      "REFUNDED": "PROVEN"
+    },
+    "conservation": [
+      {
+        "leg": "credit",
+        "in": "500014578",
+        "out": [
+          "500014578"
+        ],
+        "ok": true
+      }
+    ],
+    "claims": [],
+    "evidenceHash": "3db1b5008330c0f20a2d82f5c3e1846b5ad34b6864cf926c6a0518e66274cb5c",
+    "outputHash": "1073e9cb85043698bfd153d71c7899d6714aa51bd3146c4a00ad55fe0ee42f00"
+  },
+  "evidence": [
+    {
+      "id": "near:BWhwrs5X6edkNnnjTc3Ap43FfgxQofUzMwR3RXxVqU4K",
+      "source": "near",
+      "kind": "tx",
+      "ref": "BWhwrs5X6edkNnnjTc3Ap43FfgxQofUzMwR3RXxVqU4K",
+      "observedAt": "2026-08-10T22:46:03.568Z",
+      "class": "PROVEN"
+    },
+    {
+      "id": "near:Gy5pnrs2UTQ4EtKDswGnxX9NtoxXCprTEETKeaMddUpM",
+      "source": "near",
+      "kind": "tx",
+      "ref": "Gy5pnrs2UTQ4EtKDswGnxX9NtoxXCprTEETKeaMddUpM",
+      "observedAt": "2026-08-11T14:51:04.352Z",
+      "class": "PROVEN"
+    },
+    {
+      "id": "near:Fp5nbFaUiqqHjGQUD168zbQsM4EVE82Woe4pMXhyQ4Tq",
+      "source": "near",
+      "kind": "tx",
+      "ref": "Fp5nbFaUiqqHjGQUD168zbQsM4EVE82Woe4pMXhyQ4Tq",
+      "observedAt": "2026-09-30T16:20:48.924Z",
+      "class": "PROVEN"
+    },
+    {
+      "id": "origin:94ec9c26e896ebd9b03e74054452ea0db3c19fafe0c57bc68c3e0e9c3385fd66",
+      "source": "btc",
+      "kind": "tx",
+      "ref": "94ec9c26e896ebd9b03e74054452ea0db3c19fafe0c57bc68c3e0e9c3385fd66",
+      "observedAt": "2026-08-10T22:46:03.568Z",
+      "class": "PROVEN"
+    },
+    {
+      "id": "payout:3785476b34acf5f614e08e58526ab40754ce5e3751ddf8505a70f59d38154d19",
+      "source": "btc",
+      "kind": "tx",
+      "ref": "3785476b34acf5f614e08e58526ab40754ce5e3751ddf8505a70f59d38154d19",
+      "observedAt": "2026-09-30T16:35:22.924Z",
+      "class": "PROVEN"
+    }
+  ],
+  "timeline": [
+    {
+      "at": "2026-08-10T22:46:03.568Z",
+      "source": "near",
+      "kind": "tx",
+      "ref": "BWhwrs5X6edkNnnjTc3Ap43FfgxQofUzMwR3RXxVqU4K"
+    },
+    {
+      "at": "2026-08-10T22:46:03.568Z",
+      "source": "btc",
+      "kind": "tx",
+      "ref": "94ec9c26e896ebd9b03e74054452ea0db3c19fafe0c57bc68c3e0e9c3385fd66"
+    },
+    {
+      "at": "2026-08-11T14:51:04.352Z",
+      "source": "near",
+      "kind": "tx",
+      "ref": "Gy5pnrs2UTQ4EtKDswGnxX9NtoxXCprTEETKeaMddUpM"
+    },
+    {
+      "at": "2026-09-30T16:20:48.924Z",
+      "source": "near",
+      "kind": "tx",
+      "ref": "Fp5nbFaUiqqHjGQUD168zbQsM4EVE82Woe4pMXhyQ4Tq"
+    },
+    {
+      "at": "2026-09-30T16:35:22.924Z",
+      "source": "btc",
+      "kind": "tx",
+      "ref": "3785476b34acf5f614e08e58526ab40754ce5e3751ddf8505a70f59d38154d19"
+    }
+  ],
+  "openQuestions": []
+}

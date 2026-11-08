@@ -2,7 +2,7 @@
   "schema": "intent-delivery-verdict/1",
   "incident": "iv1_79cd091de6ae02448089b2f0c5cafe0324bdf04f7c64ef377cb9903bc1f8cb17",
   "computedAt": "2026-09-28T10:16:23.000Z",
-  "rulesVersion": "1.1.0",
+  "rulesVersion": "1.2.0",
   "journey": "GATED_FINISH",
   "nextAction": {
     "party": "omni-relayer",
@@ -28,5 +28,5 @@
   "conservation": [],
   "claims": [],
   "evidenceHash": "62e25db43921d711df06e0594305917f9c0f4d22f4f25b48378f0a4ed7c3f24d",
-  "outputHash": "1c8c687b61324b9eb8f1a59c1703636db86600c8326665481aa632bea6e5b021"
+  "outputHash": "8362901934e266d9c12765983cfed1990f8d4e6db356b887ad85da3d4c53f6d9"
 }

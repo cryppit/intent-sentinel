@@ -1,0 +1,66 @@
+{
+  "verdict": {
+    "schema": "intent-delivery-verdict/1",
+    "incident": "iv1_04789aece479de10cdf46ae6687c2dfd255e905ed2c27fda9b723796e9de55e0",
+    "computedAt": "2026-10-04T19:59:19.000Z",
+    "rulesVersion": "1.1.0",
+    "journey": "GATED_FINISH",
+    "nextAction": {
+      "party": "omni-relayer",
+      "question": "Only an Omni relayer can run fin_transfer. Will it run for 3hd4Kz…ppE5?",
+      "evidenceToAsk": [
+        "whether this transfer will be processed"
+      ]
+    },
+    "legs": [
+      {
+        "provider": "sol",
+        "status": "DEPOSIT_CONFIRMED",
+        "class": "PROVEN",
+        "custody": "omni bridge"
+      },
+      {
+        "provider": "omni",
+        "status": "INITIALISED",
+        "class": "INFERRED",
+        "custody": "omni bridge"
+      }
+    ],
+    "findings": [
+      "GATED_FINISH"
+    ],
+    "findingClasses": {
+      "GATED_FINISH": "INFERRED"
+    },
+    "conservation": [],
+    "claims": [],
+    "evidenceHash": "93b487108739ab9d4e53278f8d9563375484a6563e2e36c387a6339806b452e8",
+    "outputHash": "96e23b08b987d201715fe92c571448084e6c75fcd22e32aac7e67f97efd5e45d"
+  },
+  "evidence": [
+    {
+      "id": "sol:3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "source": "sol",
+      "kind": "tx",
+      "ref": "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5",
+      "observedAt": "2026-10-04T19:59:19.000Z",
+      "class": "PROVEN"
+    }
+  ],
+  "timeline": [
+    {
+      "at": "2026-10-04T19:59:19.000Z",
+      "source": "sol",
+      "kind": "tx",
+      "ref": "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5"
+    }
+  ],
+  "openQuestions": [
+    {
+      "question": "Only an Omni relayer can run fin_transfer. Will it run for 3hd4Kz…ppE5?",
+      "evidenceToAsk": [
+        "whether this transfer will be processed"
+      ]
+    }
+  ]
+}

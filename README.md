@@ -86,15 +86,22 @@ You should see the verdict, the proven evidence, a timeline and the open questio
 
 **7. Build a day's root**
 
+`pins/2026-11-06/` holds the three recorded cases' packets exactly as they were pinned on 6 Nov 2026.
+
 ```sh
-node cli.js root fixtures --day 2026-11-06 --account sentinel.cryppit.testnet
+node cli.js root pins/2026-11-06 --day 2026-11-06 --account sentinel.cryppit.testnet
 ```
 
-You should see the Merkle root of the three packets and the `near` command to pin it. The tool prints that command and never runs it.
+You should see `root 88c6743c…71ccae` and the `near` command that pinned it. The tool prints that command and never runs it.
 
-**8. Check it against the real pin**
+**8. Check a packet against the real pin on NEAR**
 
-These three recorded cases were pinned on NEAR testnet as the root for 6 Nov 2026. Read the pin back with a public view call. Its `merkle_root` should match the root step 7 printed, `88c6743c…71ccae`:
+```sh
+node cli.js prove pins/2026-11-06 refund-5btc > proof.json
+node cli.js verify pins/2026-11-06/refund-5btc.json proof.json --account sentinel.cryppit.testnet --day 2026-11-06
+```
+
+You should see `the verdict is in the pinned root`, read by a public view call on NEAR testnet. Change any value in the packet and run `verify` again: it fails. The `near` CLI shows the same pin directly:
 
 ```sh
 near contract call-function as-read-only sentinel.cryppit.testnet get_pin json-args '{"day":"2026-11-06"}' network-config testnet now
@@ -110,7 +117,7 @@ near contract call-function as-read-only sentinel.cryppit.testnet get_pin json-a
 ## How a verdict is made
 
 1. `src/adapters/` read public sources into legs and evidence.
-2. `src/rules.js` runs fixed rules in a fixed order. No LLM decides anything. A proven payout on one leg never closes a case while another leg is open or unproven. Some rules, such as the Chainflip ones, wait for adapters that don't exist yet.
+2. `src/rules.js` runs fixed rules in a fixed order. No LLM decides anything. A proven payout on one leg never closes a case while another leg is open or unproven. Some rules, such as the Chainflip ones, wait for adapters that don't exist yet. A payout not seen yet within an hour of the credit (three hours for Bitcoin and Zcash) reads as probably still on its way, with "check again in a few minutes". It is still not proven, so the case stays open.
 3. `src/verdict.js` builds the verdict and its hash. `computedAt` is the latest chain event, not the clock.
 
 Every fact has an evidence class:
