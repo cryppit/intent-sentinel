@@ -142,10 +142,21 @@ export async function proveHotPayout(w, payout, { fetch: f = fetch } = {}) {
   }
 }
 
+const TON_WAIT_MS = 1100;
+
+/** toncenter allows about one request a second without a key, so a refused or failed read is tried once more. */
 async function getJson(f, url) {
-  const res = await f(url, { headers: { accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
-  if (!res.ok) throw new Error(`${new URL(url).host}: HTTP ${res.status}`);
-  return res.json();
+  const once = async () => {
+    const res = await f(url, { headers: { accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!res.ok) throw new Error(`${new URL(url).host}: HTTP ${res.status}`);
+    return res.json();
+  };
+  try {
+    return await once();
+  } catch {
+    await new Promise((r) => setTimeout(r, TON_WAIT_MS));
+    return once();
+  }
 }
 
 /** A HOT payout of a TON token (jetton), proven from the transaction HOT names, or the payout as it was given. */

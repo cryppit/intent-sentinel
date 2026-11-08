@@ -173,3 +173,10 @@ test("a HOT TON payout HOT names no transaction for is left alone, and TON isn't
   assert.equal(await proveHotPayout(tonW, none, { fetch: f }), none);
   assert.ok(!calls.some((u) => u.includes("toncenter")));
 });
+test("toncenter's one-request-a-second limit is waited out once, not read as no payout", async () => {
+  const { f } = tonChains();
+  let refused = 0;
+  const limited = async (url, init) => (String(url).includes("toncenter") && refused++ === 0 ? new Response("slow down", { status: 429 }) : f(url, init));
+  const p = await proveHotPayout(tonW, tonUnverified, { fetch: limited });
+  assert.equal(p.how, "proven");
+});
