@@ -87,10 +87,18 @@ You should see the verdict, the proven evidence, a timeline and the open questio
 **7. Build a day's root**
 
 ```sh
-node cli.js root fixtures --day 2026-11-05 --account sentinel.cryppit.testnet
+node cli.js root fixtures --day 2026-11-06 --account sentinel.cryppit.testnet
 ```
 
 You should see the Merkle root of the three packets and the `near` command to pin it. The tool prints that command and never runs it.
+
+**8. Check it against the real pin**
+
+These three recorded cases were pinned on NEAR testnet as the root for 6 Nov 2026. Read the pin back with a public view call. Its `merkle_root` should match the root step 7 printed, `88c6743c…71ccae`:
+
+```sh
+near contract call-function as-read-only sentinel.cryppit.testnet get_pin json-args '{"day":"2026-11-06"}' network-config testnet now
+```
 
 ## How NEAR fits
 
@@ -135,7 +143,9 @@ cargo test
 ./build.sh --check
 ```
 
-`build.sh` prints the `code_hash`, which should match the code hash NEAR reports for the account. It needs the toolchain in `rust-toolchain.toml`. For this build the hash is `3QSdwkCACfL4aUB86WubohbgXNGhQgVa9whBu7dmGADx`. No day has been pinned yet.
+`build.sh` prints the `code_hash`, which should match the code hash NEAR reports for the account. It needs the toolchain in `rust-toolchain.toml`. For this build the hash is `3QSdwkCACfL4aUB86WubohbgXNGhQgVa9whBu7dmGADx`.
+
+This build is deployed on NEAR testnet at `sentinel.cryppit.testnet` (deploy transaction [`FqrARU6H…`](https://explorer.testnet.near.org/transactions/FqrARU6HjDUsHk1qUzz4CFRLiWM5P7y72j3kjioZPHSC)), and NEAR reports the same code hash for it. The first pin is 6 Nov 2026 (pin transaction [`GW6MLNNS…`](https://explorer.testnet.near.org/transactions/GW6MLNNSiztTC11haCkzyK2wy62JwtRKsu2zbh6gdAi9)): root `88c6743c2cfa00d7bfd01a34b24dd59a7142deac90159b46d57118914671ccae`, 3 packets, block 276,738,185.
 
 ## What existed before, and what is new
 
