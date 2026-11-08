@@ -2,7 +2,7 @@
 
 Paste one id from a stuck cross-chain swap. See what each step proves, and who has to act next.
 
-Built at NEAR HACKATHON for the `security` and `open` tracks. Live page: https://cryppit.github.io/intent-sentinel/
+Built at NEAR HACKATHON for the `security`, `open` and `defi` tracks. Live page: https://cryppit.github.io/intent-sentinel/
 
 ## The problem
 
