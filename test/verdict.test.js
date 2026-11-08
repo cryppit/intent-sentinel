@@ -24,7 +24,7 @@ test("computedAt is the latest evidence, not the clock", async () => {
 test("a verdict carries the schema and rules version", async () => {
   const v = await buildVerdict(c);
   assert.equal(v.schema, "intent-delivery-verdict/1");
-  assert.equal(v.rulesVersion, "1.4.0");
+  assert.equal(v.rulesVersion, "1.5.0");
   assert.match(v.incident, /^iv1_/);
 });
 test("claims keep only who, what and how sure", async () => {

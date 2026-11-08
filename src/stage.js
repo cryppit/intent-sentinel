@@ -1,20 +1,8 @@
 // What the route picture shows, kept pure so it can be tested. The coin only passes a stop that is proven.
-import { PARTY_WORDS, CLASS_WORDS } from "./words.js";
+import { PARTY_WORDS, CLASS_WORDS, place, placeName } from "./words.js";
 import { STATUS_WORDS } from "./render-text.js";
 
-const PLACES = {
-  near: ["NEAR", "near-protocol"], eth: ["Ethereum", "ethereum"], sol: ["Solana", "solana"], btc: ["Bitcoin", "bitcoin"], base: ["Base", "base"],
-  arb: ["Arbitrum", "arbitrum-one"], bsc: ["BNB Chain", "binance-smart-chain"], bnb: ["BNB Chain", "binance-smart-chain"], tron: ["TRON", "tron"],
-  zec: ["Zcash", "token-zec"], zcash: ["Zcash", "token-zec"], pol: ["Polygon", "polygon"], avax: ["Avalanche", "avalanche"], op: ["OP Mainnet", "optimism"],
-  gnosis: ["Gnosis", "gnosis"], xrp: ["XRP Ledger", "xrp"], doge: ["Dogecoin", "token-doge"], ltc: ["Litecoin", "litecoin"], bch: ["Bitcoin Cash", "token-bch"],
-  ton: ["TON", "ton"], sui: ["Sui", "sui"], ada: ["Cardano", "cardano"], cardano: ["Cardano", "cardano"], aptos: ["Aptos", "aptos"], stellar: ["Stellar", "stellar"],
-  strk: ["Starknet", "starknet"], starknet: ["Starknet", "starknet"], abs: ["Abstract", "abstract"], hlevm: ["HyperEVM", "hyper-evm"], fogo: ["Fogo", "token-fogo"],
-  bera: ["Berachain", "berachain"], monad: ["Monad", "monad"], plasma: ["Plasma", "plasma"], scroll: ["Scroll", "scroll"], hood: ["Robinhood Chain", "robinhood"], xlayer: ["X Layer", null],
-  "near-intents": ["NEAR Intents", "near-protocol"], omni: ["Omni bridge", null], "1click": ["1Click", null], unknown: ["Unknown source", null],
-};
-const place = (key) => PLACES[String(key).toLowerCase()] ?? PLACES[String(key).toLowerCase().replace(/ bridge$/, "")] ?? [String(key), null];
-
-export const placeName = (key) => place(key)[0];
+export { placeName };
 
 const BOARD = [["user", "You"], ["integrator", "Your app"], ["near-intents", "NEAR Intents"], ["omni-relayer", "Omni relayer"], ["anyone", "Anyone"], ["none", "Nobody"]];
 const EXTRA = { chainflip: "Chainflip", thorchain: "THORChain", unknown: "Can't name yet" };

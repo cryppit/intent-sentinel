@@ -39,7 +39,7 @@ test("a reported payout is not a proven one", () =>
 test("the Omni fee-0 case is gated on the relayer", () => {
   const r = evaluate(caseWith([{ provider: "omni", status: "INITIALISED", ref: "Near:563760", finish: { step: "sign_transfer", by: "omni-relayer" } }]), AT);
   assert.equal(r.journey, "GATED_FINISH");
-  assert.match(r.nextAction.question, /sign_transfer/);
+  assert.match(r.nextAction.question, /approve Near:563760 for payout/);
   assert.match(r.nextAction.question, /Near:563760/);
 });
 test("a credit still inside its window is not late", () =>
@@ -79,7 +79,7 @@ test("a party outside the vocabulary becomes unknown", () =>
   assert.equal(evaluate(caseWith([{ provider: "hyperliquid", status: "INGRESS_CONFIRMED_EGRESS_UNKNOWN" }]), AT).nextAction.party, "unknown"));
 test("a question names the party in plain words", () => {
   const r = evaluate(caseWith([{ provider: "omni", status: "INITIALISED", ref: "Near:7", finish: { step: "sign_transfer", by: "omni-relayer" } }]), AT);
-  assert.match(r.nextAction.question, /^Only an Omni relayer can run/);
+  assert.match(r.nextAction.question, /^Only an Omni relayer \(the bridge's operator\) can /);
 });
 test("a long hash is shortened in a question", () => {
   const ref = "3hd4Kzyd7VHQbNpgWamqznJtm9cTyAVhYVA751B8XUtPXQ4M1YpZBNx1gWnHuT1LEW11kttjRAK5geWRgKw7ppE5";
@@ -135,12 +135,12 @@ test("a payout unseen minutes after the credit reads as still on its way", () =>
   assert.equal(r.journey, "INSUFFICIENT_EVIDENCE");
   assert.ok(r.findings.includes("PAYOUT_PENDING"), r.findings.join());
   assert.match(r.nextAction.question, /on its way/);
-  assert.match(r.nextAction.evidenceToAsk.join(), /again/);
+  assert.match(r.nextAction.youCan.join(), /again/);
 });
 test("a payout unseen hours after the credit is not called on its way", () => {
   const r = evaluate(caseWith([credited, unseen("bsc", 120)]), AT);
   assert.ok(!r.findings.includes("PAYOUT_PENDING"));
-  assert.match(r.nextAction.question, /could not be read/);
+  assert.match(r.nextAction.question, /didn't answer/);
 });
 test("a Bitcoin payout gets a longer wait than a fast chain", () => {
   assert.ok(evaluate(caseWith([credited, unseen("btc", 120)]), AT).findings.includes("PAYOUT_PENDING"));
@@ -167,7 +167,7 @@ test("a private step minutes old is still being settled by NEAR Intents", () => 
   const r = evaluate(caseWith([credited, privateStep(5)]), AT);
   assert.equal(r.nextAction.party, "near-intents");
   assert.match(r.nextAction.question, /privately/);
-  assert.match(r.nextAction.question, /check again/i);
+  assert.match(r.nextAction.youCan.join(), /check this ID again/i);
 });
 test("a private step that never came back sends the owner to NEAR Intents support", () => {
   const r = evaluate(caseWith([credited, privateStep(180)]), AT);
