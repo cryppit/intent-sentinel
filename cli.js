@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openCase, replayCase } from "./src/case.js";
 import { buildPacket, packetHash, verifyPacket } from "./src/packet.js";
-import { renderText } from "./src/render-text.js";
+import { exitCode, renderText } from "./src/render-text.js";
 import { checkPin, dayRoot, nearCommand, pinArgs, proofFor } from "./src/root.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -27,8 +27,7 @@ function fail(message) {
 
 function finish({ caseData, verdict }, json) {
   console.log(json ? JSON.stringify(buildPacket(caseData, verdict), null, 2) : renderText(verdict));
-  if (verdict.journey === "INSUFFICIENT_EVIDENCE") process.exit(3);
-  process.exit(verdict.nextAction.party === "none" ? 0 : 2);
+  process.exit(exitCode({ verdict }));
 }
 
 /** Packets from a folder: downloaded packet files, and recorded cases rebuilt from their case.json. */
@@ -75,7 +74,11 @@ if (command === "demo") {
   finish(await replayCase(dir), json);
 } else if (command === "check" && target) {
   const r = await openCase(target, { now: new Date().toISOString() });
-  if (r.error) fail(r.error);
+  if (r.error && !r.notice) fail(r.error);
+  if (r.error) {
+    console.log(json ? JSON.stringify({ notice: r.error }, null, 2) : r.error);
+    process.exit(exitCode(r));
+  }
   finish(r, json);
 } else if (command === "root" && target) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day ?? "")) fail("root needs --day YYYY-MM-DD: a closed UTC day.");

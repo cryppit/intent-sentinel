@@ -254,7 +254,9 @@ export async function readOrder(raw, ctx) {
     if (report.verdict === "not_found") return { notFound: "We found no NEAR Intents swap for that ID. Check that you copied all of it." };
     return traceToLegs(report, ctx.now);
   } catch (e) {
-    return sourceFailed(e) ? failedRead("near", raw, e.message, ctx.now) : { notFound: plainNotFound(raw, e.message) };
+    if (sourceFailed(e)) return failedRead("near", raw, e.message, ctx.now);
+    // A busy account is a real answer about a valid ID, not bad input.
+    return { notFound: plainNotFound(raw, e.message), ...(BUSY.test(e.message ?? "") ? { notice: true } : {}) };
   } finally {
     clearTimeout(timer);
   }

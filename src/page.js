@@ -232,10 +232,12 @@ function hideCaseFile() {
   out.replaceChildren();
 }
 
-function fail(text) {
+/** A notice is advice about a valid ID (a payout, a busy account): same place, plain text, not shown as an error. */
+function fail(text, notice = false) {
   stage.classList.remove("reading");
   clearStage("unknown");
-  answer.replaceChildren(el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, "No answer"), el("p", { class: "a-who error", role: "alert" }, text)));
+  const words = notice ? el("p", { class: "a-who", role: "status" }, text) : el("p", { class: "a-who error", role: "alert" }, text);
+  answer.replaceChildren(el("div", { class: "a-words" }, el("p", { class: "a-eyebrow" }, notice ? "Try another ID" : "No answer"), words));
   hideCaseFile();
 }
 
@@ -278,7 +280,7 @@ form.addEventListener("submit", async (e) => {
     const r = await withDeadline(openCase($("id").value, { now: new Date().toISOString() }), READ_LIMIT_MS, { error: "The public records took too long to answer, so we can't give an answer. Try again in a minute." });
     if (mine !== run) return;
     busy(false);
-    if (r.error) return fail(r.error);
+    if (r.error) return fail(r.error, r.notice);
     present(r, null, null, true);
   } catch {
     if (mine !== run) return;

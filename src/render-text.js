@@ -44,3 +44,11 @@ export function renderText(verdict) {
   lines.push("", `Case ${verdict.incident.slice(0, 16)}…  fingerprint ${verdict.outputHash.slice(0, 16)}…`);
   return lines.join("\n");
 }
+
+/** The CLI's exit code: 0 nothing to do, 2 someone must act, 3 not enough evidence (or a valid ID that can't be checked on
+ * its own), 1 bad input. */
+export function exitCode(r) {
+  if (r.error) return r.notice ? 3 : 1;
+  if (r.verdict.journey === "INSUFFICIENT_EVIDENCE") return 3;
+  return r.verdict.nextAction.party === "none" ? 0 : 2;
+}

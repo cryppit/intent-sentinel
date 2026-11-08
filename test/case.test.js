@@ -120,3 +120,32 @@ test("two legs from one source stay two legs, even with one reference", async ()
   const both = { ...paid(), legs: [{ id: "a", provider: "sol", ref: "S", status: "DEPOSIT_CONFIRMED", class: "PROVEN", evidence: [] }, { id: "b", provider: "omni", ref: "S", status: "INITIALISED", class: "INFERRED", evidence: [] }] };
   assert.equal((await openCase(NEAR_TX, stub({ order: async () => both }))).caseData.legs.length, 2);
 });
+
+// The hash a user is most likely to hold is the payout's: the money arriving. It is not a deposit.
+const PAYOUT_TX = "0x" + "f".repeat(64);
+test("a pasted payout transaction leads to its order when the bridge's record names it", async () => {
+  const asked = [];
+  const ctx = stub({
+    order: async (id) => { asked.push(id); return id === NEAR_TX ? paid() : { notFound: "no deposit names this" }; },
+    payoutSide: async () => ({ nearTx: NEAR_TX, chain: "bsc", by: "the HOT bridge" }),
+  });
+  const r = await openCase(PAYOUT_TX, ctx);
+  assert.ok(r.verdict, r.error);
+  assert.deepEqual(asked, [PAYOUT_TX, NEAR_TX]);
+  assert.equal(r.verdict.journey, "PAID_OUT");
+});
+test("a pasted payout transaction with no record back gets plain words, not an error", async () => {
+  const notice = "That's the payout transaction (money arriving). NEAR Intents sent it on Arbitrum. To check your swap, paste the transaction that sent the money, or the deposit address.";
+  const r = await openCase(PAYOUT_TX, stub({ order: async () => ({ notFound: "no deposit names this" }), payoutSide: async () => ({ notice }) }));
+  assert.equal(r.error, notice);
+  assert.equal(r.notice, true);
+});
+test("an unknown transaction that isn't a payout keeps its first answer", async () => {
+  const r = await openCase(PAYOUT_TX, stub({ order: async () => ({ notFound: "no deposit names this" }), payoutSide: async () => null }));
+  assert.equal(r.error, "no deposit names this");
+  assert.ok(!r.notice);
+});
+test("a many-swaps answer is a notice, not bad input", async () => {
+  const r = await openCase("gnk-usd.near", stub({ order: async () => ({ notFound: "gnk-usd.near has many swaps", notice: true }) }));
+  assert.equal(r.notice, true);
+});

@@ -25,3 +25,8 @@ test("the page only offers parties the rules can name", async () => {
   assert.ok(!board.includes("solver"));
   assert.doesNotMatch(html, /Solver/);
 });
+
+test("a valid ID that can't be checked on its own is shown as plain advice, not as an error", () => {
+  assert.match(code, /if \(r\.error\) return fail\(r\.error, r\.notice\)/);
+  assert.match(code, /function fail\(text, notice = false\)/);
+});

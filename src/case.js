@@ -3,12 +3,13 @@ import { readStatus } from "./adapters/oneclick.js";
 import { readOrder } from "./adapters/near.js";
 import { readTransfer } from "./adapters/omni.js";
 import { readTx } from "./adapters/evm.js";
+import { payoutSide } from "./adapters/payout-side.js";
 import { readIdentifier } from "./incident.js";
 import { buildVerdict } from "./verdict.js";
 import { failedRead } from "./net.js";
 
 const MAX_HOPS = 8;
-const LIVE = { order: readOrder, transfer: readTransfer, evmTx: readTx, status: readStatus };
+const LIVE = { order: readOrder, transfer: readTransfer, evmTx: readTx, status: readStatus, payoutSide };
 const EDGE = { CREDITED: "credited-to", PAID_OUT: "paid-to", REFUNDED: "refunded-to", CONTRACT_FORWARDED: "forwarded-to" };
 
 function absorb(c, found, followUp = false) {
@@ -42,7 +43,14 @@ async function firstAnswer(id, a, ctx, status) {
     return status?.failed ? failedRead("1click", id.value, "1Click could not be read", ctx.now) : order;
   }
   const omni = await a.transfer(id.value, ctx);
-  return omni.notFound ? order : omni;
+  if (!omni.notFound) return omni;
+  // No deposit names it: it may be the payout (the money arriving), which is the hash people most often hold.
+  const side = await a.payoutSide(id, ctx);
+  if (side?.nearTx) {
+    const traced = await a.order(side.nearTx, ctx);
+    if (!traced.notFound) return traced;
+  }
+  return side?.notice ? { notFound: side.notice, notice: true } : order;
 }
 
 const linked = (legs) => legs.slice(1).map((l, i) => ({ from: legs[i].id, to: l.id, kind: EDGE[l.status] ?? "bridged-as" }));
@@ -53,7 +61,8 @@ export async function openCase(raw, ctx) {
   const a = { ...LIVE, ...ctx.adapters };
   const status = id.kind === "deposit-address" ? await a.status(id.value, ctx) : null;
   const first = await firstAnswer(id, a, ctx, status);
-  if (first.notFound) return { error: first.notFound };
+  // A notice is a valid ID that can't be checked on its own (a payout, a busy account): plain words, not bad input.
+  if (first.notFound) return { error: first.notFound, ...(first.notice ? { notice: true } : {}) };
   const caseData = { identifiers: [], legs: [], edges: [], evidence: [], claims: [], warnings: [] };
   absorb(caseData, first);
   const asked = new Set();

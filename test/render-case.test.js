@@ -49,3 +49,11 @@ test("a payout still on its way gets its own headline, and still isn't done", ()
   assert.match(caseView(young).headline, /probably still on its way/);
   assert.equal(caseView(young).tone, "unknown");
 });
+test("exit codes: a notice is 'not enough evidence', bad input is 1", async () => {
+  const { exitCode } = await import("../src/render-text.js");
+  assert.equal(exitCode({ error: "x", notice: true }), 3);
+  assert.equal(exitCode({ error: "x" }), 1);
+  assert.equal(exitCode({ verdict: { journey: "INSUFFICIENT_EVIDENCE", nextAction: { party: "unknown" } } }), 3);
+  assert.equal(exitCode({ verdict: { journey: "PAID_OUT", nextAction: { party: "none" } } }), 0);
+  assert.equal(exitCode({ verdict: { journey: "GATED_FINISH", nextAction: { party: "omni-relayer" } } }), 2);
+});

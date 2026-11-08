@@ -98,6 +98,7 @@ test("a pasted busy account says it has many swaps and asks for the one transact
   const r = await readOrder("gnk-usd.near", { now: NOW, check: busy("gnk-usd.near") });
   assert.match(r.notFound, /gnk-usd\.near has many swaps/);
   assert.match(r.notFound, /transaction ID of the one swap/);
+  assert.equal(r.notice, true);
   assert.doesNotMatch(r.notFound, /wallet account/);
 });
 const roundTripReport = { ...paidReport, flags: [{ kind: "confidential", detail: "part of the order went through Confidential Intents and came back; the withdrawal after it is public" }] };
