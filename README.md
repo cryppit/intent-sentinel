@@ -184,6 +184,12 @@ cargo test
 
 This build is deployed on NEAR testnet at `sentinel.cryppit.testnet` (deploy transaction [`FqrARU6H…`](https://explorer.testnet.near.org/transactions/FqrARU6HjDUsHk1qUzz4CFRLiWM5P7y72j3kjioZPHSC)), and NEAR reports the same code hash for it. The first pin is 6 Nov 2026 (pin transaction [`GW6MLNNS…`](https://explorer.testnet.near.org/transactions/GW6MLNNSiztTC11haCkzyK2wy62JwtRKsu2zbh6gdAi9)): root `88c6743c2cfa00d7bfd01a34b24dd59a7142deac90159b46d57118914671ccae`, 3 packets, block 276,738,185.
 
+The account is locked. Its full-access key was deleted on 8 Nov 2026, so nobody, Cryppit included, can redeploy the contract, change it or move its funds. The only key left can call `pin` on this account and nothing else, with a 0.5 NEAR gas allowance. To check:
+
+```sh
+near account list-keys sentinel.cryppit.testnet network-config testnet now
+```
+
 ## What existed before, and what is new
 
 Per NEAR HACKATHON Q-002, Q-003 and Q-005:
