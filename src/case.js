@@ -1,4 +1,5 @@
 // Opens a case from one pasted identifier: ask the sources, follow what they link to, and build the verdict.
+import { table } from "./words.js";
 import { readStatus } from "./adapters/oneclick.js";
 import { readOrder } from "./adapters/near.js";
 import { readTransfer } from "./adapters/omni.js";
@@ -10,7 +11,7 @@ import { failedRead } from "./net.js";
 
 const MAX_HOPS = 8;
 const LIVE = { order: readOrder, transfer: readTransfer, evmTx: readTx, status: readStatus, payoutSide };
-const EDGE = { CREDITED: "credited-to", PAID_OUT: "paid-to", REFUNDED: "refunded-to", CONTRACT_FORWARDED: "forwarded-to" };
+const EDGE = table({ CREDITED: "credited-to", PAID_OUT: "paid-to", REFUNDED: "refunded-to", CONTRACT_FORWARDED: "forwarded-to" });
 
 function absorb(c, found, followUp = false) {
   for (const leg of found.legs) {

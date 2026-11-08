@@ -4,9 +4,16 @@ import { buildPacket } from "./packet.js";
 import { caseView, explorerUrl } from "./render-case.js";
 import { placeName, stageView } from "./stage.js";
 import { withDeadline } from "./net.js";
-import { shortRef, wheelChains } from "./words.js";
+import { shortRef, wheelChains, table } from "./words.js";
 import { LATEST_PIN, pinUrl } from "./pins.js";
 import { buildVerdict } from "./verdict.js";
+import { framed } from "./frame-guard.js";
+
+// Inside another site's frame, the page doesn't run: it only says where to open it.
+if (framed(window)) {
+  document.body.replaceChildren("Open Intent Sentinel directly: https://cryppit.github.io/intent-sentinel/");
+  throw new Error("Intent Sentinel doesn't run inside a frame.");
+}
 
 const $ = (id) => document.getElementById(id);
 const out = $("out");
@@ -51,13 +58,13 @@ function coin(stop) {
 }
 
 // Who a party is, in one line, shown under the headline. And where the money was last seen, in words.
-const WHO_IS = {
+const WHO_IS = table({
   "omni-relayer": "You and your app can't run this step yourselves. It's the bridge's job.",
   "near-intents": "NEAR Intents is the NEAR service that holds your coins between the steps of a swap.",
   integrator: "Your app is the wallet or website you swapped through.",
   anyone: "This step is open: anyone, including you, can do it.",
-};
-const CUSTODY = { bridge: "with the bridge", "intents.near": "held by NEAR Intents", recipient: "at the receiving address", "refund address": "back at your refund address", "omni bridge": "with the Omni bridge" };
+});
+const CUSTODY = table({ bridge: "with the bridge", "intents.near": "held by NEAR Intents", recipient: "at the receiving address", "refund address": "back at your refund address", "omni bridge": "with the Omni bridge" });
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dayWords = (iso) => `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 

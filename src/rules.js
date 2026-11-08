@@ -2,7 +2,7 @@
 // network. `at` is when the case was read. A soft rule only fills in a next party when nothing is left open; a settling
 // rule never replaces an open one, because a proven payout on one leg says nothing about the others.
 import { PARTIES } from "./schema.js";
-import { PARTY_WORDS, STATUS_SAYS, legPlace, place, shortRef, stepWords } from "./words.js";
+import { PARTY_WORDS, STATUS_SAYS, legPlace, place, shortRef, stepWords, table } from "./words.js";
 
 const when = (s) => Date.parse(s);
 const isProven = (leg) => leg.class === "PROVEN";
@@ -150,7 +150,7 @@ const OPEN = { journey: "INSUFFICIENT_EVIDENCE", party: "unknown" };
 const ASK_MORE = { party: "unknown", question: "One of the public records didn't answer, or couldn't prove a step, so we can't finish the check.", evidenceToAsk: [], youCan: ["try again in a few minutes", "paste another ID from the same swap, such as your deposit transaction"] };
 
 // How long after the credit an unseen payout is still most likely on its way. Bitcoin and Zcash withdrawals are slower.
-const PENDING_MS = { btc: 3 * 3600_000, zec: 3 * 3600_000 };
+const PENDING_MS = table({ btc: 3 * 3600_000, zec: 3 * 3600_000 });
 const PENDING_DEFAULT_MS = 3600_000;
 const WAIT = (slow) => ({ party: "unknown", question: "The payout isn't proven yet. The money reached NEAR Intents recently, so the payout is probably still on its way.", evidenceToAsk: [], youCan: [slow ? "check this ID again in an hour (Bitcoin and Zcash payouts are slower)" : "check this ID again in 15 minutes"] });
 // Not seen yet, or seen but not confirmed (e.g. a Bitcoin payout still in the mempool).

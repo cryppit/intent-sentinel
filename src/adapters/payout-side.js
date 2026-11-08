@@ -28,7 +28,7 @@ export const payoutWords = (by, chain) =>
 async function read(f, url, body) {
   try {
     const init = body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { headers: { accept: "application/json" } };
-    const res = await f(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const res = await f(url, { ...init, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
     return res.ok ? await res.json() : null;
   } catch {
     return null;

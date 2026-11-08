@@ -2,7 +2,7 @@
 // sign_transfer and fin_transfer are #[trusted_relayer] in Near-One/omni-bridge (near/omni-bridge/src/lib.rs); finTransfer
 // on an EVM chain checks the MPC signature and pays only the signed recipient, so anyone may send it.
 import { publicPayoutClient } from "../../vendor/wms-core.mjs";
-import { failedRead, getJson, postJson } from "../net.js";
+import { failedRead, getJson, noStore, postJson } from "../net.js";
 import { readTx } from "./evm.js";
 import { solanaTransaction } from "./solana.js";
 
@@ -34,7 +34,7 @@ const bare = (address) => String(address ?? "").replace(/^[a-z]+:/i, "").toLower
 async function paidOnContract(t, ctx) {
   const chain = CONTRACT_CHAIN[t.destination_chain];
   if (!chain || t.destination_nonce == null) return undefined;
-  const ask = ctx.omniPaid ?? publicPayoutClient(ctx.fetch ?? fetch).omniPaid;
+  const ask = ctx.omniPaid ?? publicPayoutClient(noStore(ctx.fetch ?? fetch)).omniPaid;
   return ask(chain, t.destination_nonce).catch(() => null);
 }
 

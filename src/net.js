@@ -2,7 +2,8 @@
 const TIMEOUT_MS = 12_000;
 
 async function attempt(fetchImpl, url, init) {
-  const res = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  // no-store: what was looked up doesn't stay in the browser's HTTP cache.
+  const res = await fetchImpl(url, { ...init, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new Error(`${new URL(url).host} answered ${res.status}`);
   return res.json();
 }
@@ -19,6 +20,9 @@ export const getJson = (url, ctx = {}) => withRetry(() => attempt(ctx.fetch ?? f
 
 export const postJson = (url, body, ctx = {}) =>
   withRetry(() => attempt(ctx.fetch ?? fetch, url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
+
+/** A fetch that asks the browser not to keep the answer in its HTTP cache. */
+export const noStore = (f) => (url, init = {}) => f(url, { ...init, cache: "no-store" });
 
 /** One try, for a caller that has other endpoints to move on to. */
 export const postJsonOnce = (url, body, ctx = {}) =>

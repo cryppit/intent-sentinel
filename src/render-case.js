@@ -1,11 +1,11 @@
 // What the page shows for a verdict, kept pure so it can be tested. Evidence classes are words, never colour alone.
 import { askWho, balanceWords, headline, STATUS_WORDS } from "./render-text.js";
-import { CLASS_WORDS, claimWords } from "./words.js";
+import { CLASS_WORDS, claimWords, table } from "./words.js";
 
-const EXPLORERS = {
+const EXPLORERS = table({
   near: "https://nearblocks.io/txns/", eth: "https://etherscan.io/tx/", sol: "https://solscan.io/tx/", btc: "https://mempool.space/tx/",
   base: "https://basescan.org/tx/", arb: "https://arbiscan.io/tx/", bsc: "https://bscscan.com/tx/", tron: "https://tronscan.org/#/transaction/",
-};
+});
 const title = (s) => s[0].toUpperCase() + s.slice(1);
 
 export const explorerUrl = (source, ref) => (EXPLORERS[source] ? `${EXPLORERS[source]}${ref}` : null);

@@ -101,7 +101,7 @@ export function nestedWithdraw(input, nonce) {
 }
 
 async function post(f, url, body) {
-  const res = await f(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const res = await f(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new Error(`${new URL(url).host}: HTTP ${res.status}`);
   return res.json();
 }
@@ -143,7 +143,7 @@ export async function proveHotPayout(w, payout, { fetch: f = fetch } = {}) {
 }
 
 async function getJson(f, url) {
-  const res = await f(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const res = await f(url, { headers: { accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new Error(`${new URL(url).host}: HTTP ${res.status}`);
   return res.json();
 }

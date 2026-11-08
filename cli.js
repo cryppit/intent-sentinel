@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openCase, replayCase } from "./src/case.js";
 import { buildPacket, packetHash, verifyPacket } from "./src/packet.js";
-import { exitCode, renderText } from "./src/render-text.js";
+import { exitCode, printable, renderText } from "./src/render-text.js";
 import { checkPin, dayRoot, nearCommand, pinArgs, proofFor } from "./src/root.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -21,7 +21,7 @@ const USAGE = `Usage:
                                                           check a packet against the pin on NEAR, by a public view call`;
 
 function fail(message) {
-  console.error(message);
+  console.error(printable(message));
   process.exit(1);
 }
 
@@ -76,7 +76,7 @@ if (command === "demo") {
   const r = await openCase(target, { now: new Date().toISOString() });
   if (r.error && !r.notice) fail(r.error);
   if (r.error) {
-    console.log(json ? JSON.stringify({ notice: r.error }, null, 2) : r.error);
+    console.log(json ? JSON.stringify({ notice: r.error }, null, 2) : printable(r.error));
     process.exit(exitCode(r));
   }
   finish(r, json);

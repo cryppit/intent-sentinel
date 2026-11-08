@@ -1,11 +1,11 @@
 // What the route picture shows, kept pure so it can be tested. The coin only passes a stop that is proven.
-import { PARTY_WORDS, CLASS_WORDS, place, placeName } from "./words.js";
+import { PARTY_WORDS, CLASS_WORDS, place, placeName, table } from "./words.js";
 import { STATUS_WORDS } from "./render-text.js";
 
 export { placeName };
 
 const BOARD = [["user", "You"], ["integrator", "Your app"], ["near-intents", "NEAR Intents"], ["omni-relayer", "Omni relayer"], ["anyone", "Anyone"], ["none", "Nobody"]];
-const EXTRA = { chainflip: "Chainflip", thorchain: "THORChain", unknown: "Can't name yet" };
+const EXTRA = table({ chainflip: "Chainflip", thorchain: "THORChain", unknown: "Can't name yet" });
 const REACHED = new Set(["DEPOSIT_CONFIRMED", "CREDITED", "PAID_OUT", "REFUNDED", "FINALISED", "CONTRACT_FORWARDED"]);
 const LAST_STOP = new Set(["PAID_OUT", "REFUNDED", "FINALISED", "PAYOUT_UNSEEN"]);
 const title = (s) => s[0].toUpperCase() + s.slice(1);

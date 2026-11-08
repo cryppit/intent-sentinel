@@ -1,13 +1,13 @@
 // The verdict in plain words: who acts next first, then each step and how sure we are of it.
-import { CLASS_WORDS, PARTY_WORDS, claimWords, legPlace, placeName } from "./words.js";
+import { CLASS_WORDS, PARTY_WORDS, claimWords, legPlace, placeName, table } from "./words.js";
 
-export const STATUS_WORDS = {
+export const STATUS_WORDS = table({
   DEPOSIT_CONFIRMED: "deposit confirmed", DEPOSIT_NOT_FOUND: "no deposit found yet", CREDITED: "received", CREDIT_PENDING: "not received yet",
   HELD: "waiting here", PAID_OUT: "paid out", REFUNDED: "sent back (refund)", CONTRACT_FORWARDED: "passed on by a smart contract",
   INGRESS_CONFIRMED_EGRESS_UNKNOWN: "received; no payout found yet", INITIALISED: "started, not finished", SIGNED: "approved by the bridge, not finished",
   FINALISED: "finished", NOT_VISIBLE: "private step (not public)", LOOKUP_FAILED: "couldn't check",
   PAYOUT_UNSEEN: "no payout found yet", NOT_PROVEN: "reported, not proven",
-};
+});
 
 export function balanceWords(x) {
   const at = legPlace(x.leg);
@@ -42,7 +42,7 @@ export function renderText(verdict) {
   for (const x of verdict.conservation) lines.push(`  ${balanceWords(x)}`);
   for (const w of verdict.warnings ?? []) lines.push(`  Note: ${w.detail}`);
   lines.push("", `Case ${verdict.incident.slice(0, 16)}…  fingerprint ${verdict.outputHash.slice(0, 16)}…`);
-  return lines.join("\n");
+  return printable(lines.join("\n"));
 }
 
 /** The CLI's exit code: 0 nothing to do, 2 someone must act, 3 not enough evidence (or a valid ID that can't be checked on
@@ -52,3 +52,7 @@ export function exitCode(r) {
   if (r.verdict.journey === "INSUFFICIENT_EVIDENCE") return 3;
   return r.verdict.nextAction.party === "none" ? 0 : 2;
 }
+
+/** Text from chains, RPCs and bridges, safe for a terminal: control characters (escape sequences among them) are
+ * dropped. New lines and tabs stay. */
+export const printable = (s) => String(s).replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, "");

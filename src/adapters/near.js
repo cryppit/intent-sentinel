@@ -120,7 +120,8 @@ export function traceToLegs(report, now) {
   };
 }
 
-const timed = (f) => (url, init = {}) => f(url, { ...init, signal: init.signal ?? AbortSignal.timeout(SOURCE_TIMEOUT_MS) });
+// Every tracer read goes through here: a time limit, and no-store so what was looked up doesn't stay in the HTTP cache.
+const timed = (f) => (url, init = {}) => f(url, { ...init, cache: "no-store", signal: init.signal ?? AbortSignal.timeout(SOURCE_TIMEOUT_MS) });
 
 /**
  * FastNEAR, but when the order's account has too many transactions to read (a busy account), a pasted NEAR transaction
