@@ -161,7 +161,18 @@ Nothing goes to a Cryppit server: the page is static, and what you paste goes fr
 
 ## The pin contract
 
-`anchor/contract/` is the Rust contract a daily root is pinned to. It uses no near-sdk, it only accepts closed UTC days, and only its own account can pin. To check a deployed copy against this source:
+`anchor/contract/` is the Rust contract a daily root is pinned to. It uses no near-sdk, it only accepts closed UTC days, and only its own account can pin.
+
+To check that the deployed contract is exactly the binary committed here, download it and compare. No build is needed:
+
+```sh
+near contract download-wasm regular sentinel.cryppit.testnet save-to-file deployed.wasm network-config testnet now
+cmp deployed.wasm anchor/contract/res/station_anchor.wasm && echo identical
+```
+
+NEAR reports the code hash `3QSdwkCACfL4aUB86WubohbgXNGhQgVa9whBu7dmGADx` for the account: the sha256 of that file, written in base58.
+
+To check the binary against this source, run the tests and rebuild:
 
 ```sh
 cd anchor/contract
@@ -169,7 +180,7 @@ cargo test
 ./build.sh --check
 ```
 
-`build.sh` prints the `code_hash`, which should match the code hash NEAR reports for the account. It needs the toolchain in `rust-toolchain.toml`. For this build the hash is `3QSdwkCACfL4aUB86WubohbgXNGhQgVa9whBu7dmGADx`.
+`build.sh --check` gives the same code hash only when it builds in the same folder layout as the original build. Rust writes the source paths of the crates it compiles into the binary (for panic messages), so a build in another folder makes the same code with different path text and a different hash. It needs the toolchain in `rust-toolchain.toml`.
 
 This build is deployed on NEAR testnet at `sentinel.cryppit.testnet` (deploy transaction [`FqrARU6H…`](https://explorer.testnet.near.org/transactions/FqrARU6HjDUsHk1qUzz4CFRLiWM5P7y72j3kjioZPHSC)), and NEAR reports the same code hash for it. The first pin is 6 Nov 2026 (pin transaction [`GW6MLNNS…`](https://explorer.testnet.near.org/transactions/GW6MLNNSiztTC11haCkzyK2wy62JwtRKsu2zbh6gdAi9)): root `88c6743c2cfa00d7bfd01a34b24dd59a7142deac90159b46d57118914671ccae`, 3 packets, block 276,738,185.
 
