@@ -9,7 +9,7 @@ const PLACES = {
   gnosis: ["Gnosis", "gnosis"], xrp: ["XRP Ledger", "xrp"], doge: ["Dogecoin", "token-doge"], ltc: ["Litecoin", "litecoin"], bch: ["Bitcoin Cash", "token-bch"],
   ton: ["TON", "ton"], sui: ["Sui", "sui"], ada: ["Cardano", "cardano"], cardano: ["Cardano", "cardano"], aptos: ["Aptos", "aptos"], stellar: ["Stellar", "stellar"],
   strk: ["Starknet", "starknet"], starknet: ["Starknet", "starknet"], abs: ["Abstract", "abstract"], hlevm: ["HyperEVM", "hyper-evm"], fogo: ["Fogo", "token-fogo"],
-  bera: ["Berachain", "berachain"], monad: ["Monad", "monad"], plasma: ["Plasma", "plasma"], scroll: ["Scroll", "scroll"],
+  bera: ["Berachain", "berachain"], monad: ["Monad", "monad"], plasma: ["Plasma", "plasma"], scroll: ["Scroll", "scroll"], hood: ["Robinhood Chain", "robinhood"], xlayer: ["X Layer", null],
   "near-intents": ["NEAR Intents", "near-protocol"], omni: ["Omni bridge", null], "1click": ["1Click", null], unknown: ["Unknown source", null],
 };
 const place = (key) => PLACES[String(key).toLowerCase()] ?? PLACES[String(key).toLowerCase().replace(/ bridge$/, "")] ?? [String(key), null];

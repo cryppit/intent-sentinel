@@ -8,7 +8,7 @@ import { SOLANA_RPCS, withSolanaFallback } from "./solana.js";
 const iso = (ns) => (ns == null ? null : new Date(Number(BigInt(ns) / 1_000_000n)).toISOString());
 // The tracer writes chains several ways: eth:8453 is Base, bnb is bsc, zcash:mainnet is zec. An EVM id we don't know keeps
 // its id, so it's never called Ethereum.
-const EVM_IDS = { 1: "eth", 8453: "base", 42161: "arb", 100: "gnosis", 9745: "plasma", 80094: "bera", 56: "bsc", 10: "op", 137: "pol", 43114: "avax", 196: "xlayer" };
+const EVM_IDS = { 1: "eth", 8453: "base", 42161: "arb", 100: "gnosis", 9745: "plasma", 80094: "bera", 56: "bsc", 10: "op", 137: "pol", 43114: "avax", 196: "xlayer", 4663: "hood" };
 const CHAIN_ALIAS = { bnb: "bsc", zcash: "zec", strk: "starknet" };
 const short = (chain) => {
   const [network, id] = String(chain ?? "near").toLowerCase().split(":");

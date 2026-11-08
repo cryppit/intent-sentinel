@@ -7,7 +7,7 @@ import { readStatus } from "../src/adapters/oneclick.js";
 import { SOLANA_RPCS, solanaTransaction, withSolanaFallback } from "../src/adapters/solana.js";
 import { withDeadline } from "../src/net.js";
 import { buildPacket, verifyPacket } from "../src/packet.js";
-import { stageView } from "../src/stage.js";
+import { placeName, stageView } from "../src/stage.js";
 import { buildVerdict } from "../src/verdict.js";
 import { AT, BEFORE, caseWith } from "./helpers.js";
 import { refundedReport } from "./stubs/reports.js";
@@ -247,3 +247,8 @@ test("a withdrawal with no chain isn't called NEAR", () => {
 });
 
 test("X Layer deposits keep their own name", () => assert.equal(traceToLegs(noSwapReport("eth:196", "xlayer"), AT).legs.at(-1).status, "REFUNDED"));
+test("a Robinhood Chain deposit is named Robinhood Chain, not a raw chain id", () => {
+  const leg = traceToLegs(noSwapReport("eth:4663", "eth"), AT).legs[0];
+  assert.equal(leg.provider, "hood");
+  assert.equal(placeName(leg.provider), "Robinhood Chain");
+});
