@@ -1700,7 +1700,7 @@ var BATCH_OUTPUTS = 3;
 var isBatch = (f) => f.outputs !== void 0 && f.outputs >= BATCH_OUTPUTS;
 var REQUEST_WINDOW = {
   btc: { blocks: 52704, blockSec: 600, span: "about a year" },
-  zcash: { blocks: 103680, blockSec: 75, span: "about 90 days" }
+  zcash: { blocks: 103680, blockSec: 25, span: "about 30 days" }
 };
 var requestWindowSec = (chain) => REQUEST_WINDOW[chain].blocks * REQUEST_WINDOW[chain].blockSec;
 var BTC_REQUEST_WINDOW_SEC = requestWindowSec("btc");
