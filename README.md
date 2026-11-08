@@ -4,6 +4,10 @@ Paste one id from a stuck cross-chain swap. See what each step proves, and who h
 
 Built at NEAR HACKATHON for the `security`, `open` and `defi` tracks. Live page: https://cryppit.github.io/intent-sentinel/
 
+Our other, independent NEAR HACKATHON entry (rule Q-015) is **Where's My ZEC** (https://github.com/cryppit/wheres-my-zec),
+which tells ZEC users where their coins went and, for stuck Omni bridge deposits, reads the refund deadline from NEAR's
+Zcash light client. It links here for NEAR Intents swaps; the code bases are separate.
+
 ## The problem
 
 A cross-chain swap crosses several systems, and each one shows only its own status. When money stalls, the user sees `FAILED` or nothing, and support teams pass the case around. None of the rails we surveyed says who has to act next.
