@@ -125,6 +125,16 @@ async function liveCheck(raw, ctx) {
 /** A broken source, not an answer about the order: these must never read as "no such order". */
 const sourceFailed = (e) => fastnearUnavailable(e) || ["TimeoutError", "AbortError", "SyntaxError", "TypeError"].includes(e.name) || /\bHTTP \d{3}\b|answered \d{3}/.test(e.message);
 
+// The tracer follows a pasted transaction to the account that signed it. When that account settles many orders, such as
+// a solver or the private settlement account, the transaction doesn't belong to one swap.
+const BUSY = /^(\S+) has .* transactions: that is a wallet account/;
+const looksLikeTx = (raw) => /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(String(raw).trim());
+function plainNotFound(raw, message) {
+  const busy = BUSY.exec(message);
+  if (!busy || !looksLikeTx(raw)) return message;
+  return `That transaction was signed by ${busy[1]}, which settles many orders, so it doesn't belong to one swap. Paste your own deposit transaction or deposit address instead.`;
+}
+
 export async function readOrder(raw, ctx) {
   let timer;
   const limit = new Promise((_, reject) => {
@@ -135,7 +145,7 @@ export async function readOrder(raw, ctx) {
     if (report.verdict === "not_found") return { notFound: "No NEAR Intents order was found for that id." };
     return traceToLegs(report, ctx.now);
   } catch (e) {
-    return sourceFailed(e) ? failedRead("near", raw, e.message, ctx.now) : { notFound: e.message };
+    return sourceFailed(e) ? failedRead("near", raw, e.message, ctx.now) : { notFound: plainNotFound(raw, e.message) };
   } finally {
     clearTimeout(timer);
   }

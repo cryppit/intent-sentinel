@@ -85,3 +85,15 @@ test("a source that hangs fails instead of waiting for ever", async () => {
   const r = await readOrder("x", { now: NOW, timeoutMs: 20, check: () => new Promise(() => {}) });
   assert.equal(r.legs[0].status, "LOOKUP_FAILED");
 });
+
+const busy = (account) => async () => { throw new Error(`${account} has 7730537 transactions: that is a wallet account, not one swap. Paste the swap's NEAR transaction or your deposit transaction instead.`); };
+test("a pasted transaction signed by a busy solver account is explained, not called a wallet", async () => {
+  const r = await readOrder("Agmwz426kYPRJ7j4m3gEyynjx9TSqYtWzYNNjBAwMFJW", { now: NOW, check: busy("solver-priv-liq.near") });
+  assert.match(r.notFound, /solver-priv-liq\.near/);
+  assert.match(r.notFound, /many orders/);
+  assert.doesNotMatch(r.notFound, /wallet account/);
+});
+test("a pasted busy account keeps the wallet-account answer", async () => {
+  const r = await readOrder("solver-priv-liq.near", { now: NOW, check: busy("solver-priv-liq.near") });
+  assert.match(r.notFound, /wallet account/);
+});
